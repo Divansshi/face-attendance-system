@@ -15,13 +15,14 @@
       <a href="/student/record" class="nav-link active">My attendance</a>
     </div>
     <div class="nav-profile">
-      <button class="profile-btn" onclick="toggleDropdown()">AF</button>
+      <button class="profile-btn" onclick="toggleDropdown()">
+        {{ name[0] }}
+      </button>
       <div class="profile-dropdown" id="profileDropdown">
         <div class="profile-info">
-          <div class="profile-name">Ahmad Faris</div>
-          <div class="profile-email">2021234567</div>
+          <div class="profile-name">{{ name }}</div>
         </div>
-        <a href="/student/login" class="dropdown-item danger">Sign out</a>
+        <a href="/student/logout" class="dropdown-item danger">Sign out</a>
       </div>
     </div>
   </nav>
@@ -37,58 +38,39 @@
         <circle cx="70" cy="70" r="54"
           fill="none" stroke="#1D9E75" stroke-width="12"
           stroke-linecap="round"
-          stroke-dasharray="244 339.3"
+          stroke-dasharray="{{ (percentage / 100 * 339.3)|round(1) }} 339.3"
           transform="rotate(-90 70 70)" />
         <text x="70" y="65" text-anchor="middle"
-          font-size="26" font-weight="500" fill="#2C2C2A">72%</text>
+          font-size="26" font-weight="500" fill="#2C2C2A">{{ percentage }}%</text>
         <text x="70" y="84" text-anchor="middle"
           font-size="11" fill="#888780">attended</text>
       </svg>
-      <p class="ring-label">13 of 18 classes · Threshold: 80%</p>
+      <p class="ring-label">{{ attended }} of {{ total }} classes · Threshold: 80%</p>
     </div>
 
+    {% if below %}
     <div class="warning-banner">
       <span class="warning-icon">⚠</span>
-      <span>Your attendance is below the 80% requirement. You need to attend the next <strong>3 classes</strong> to meet the threshold.</span>
+      <span>Your attendance is below the 80% requirement.</span>
     </div>
+    {% endif %}
 
     <div class="session-list">
+      {% for r in records %}
       <div class="session-row">
         <div>
-          <div>Week 10 — Lecture</div>
-          <div class="session-date">Wed 6 May</div>
+          <div>{{ r['course_code'] }}</div>
+          <div class="session-date">{{ r['date'] }} · {{ r['time'] }}</div>
         </div>
         <span class="badge-present">Present</span>
       </div>
-      <div class="session-row">
-        <div>
-          <div>Week 9 — Lecture</div>
-          <div class="session-date">Wed 29 Apr</div>
-        </div>
-        <span class="badge-absent">Absent</span>
+      {% else %}
+      <div style="padding: 1.5rem; text-align:center; color: var(--gray-500); font-size:14px;">
+        No attendance records yet
       </div>
-      <div class="session-row">
-        <div>
-          <div>Week 8 — Lecture</div>
-          <div class="session-date">Wed 22 Apr</div>
-        </div>
-        <span class="badge-present">Present</span>
-      </div>
-      <div class="session-row">
-        <div>
-          <div>Week 9 — Lecture</div>
-          <div class="session-date">Wed 15 Apr</div>
-        </div>
-        <span class="badge-absent">Absent</span>
-      </div>
-      <div class="session-row">
-        <div>
-          <div>Week 6 — Lecture</div>
-          <div class="session-date">Wed 8 Apr</div>
-        </div>
-        <span class="badge-present">Present</span>
-      </div>
+      {% endfor %}
     </div>
+
   </div>
 
   <script>
