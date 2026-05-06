@@ -49,6 +49,20 @@
       Scan my face
     </button>
 
+    <!-- Block banner — hidden by default -->
+    <div id="blockBanner" style="display:none; margin-top:1rem;
+         background:#FAEEDA; border-radius:var(--radius-sm);
+         padding:16px 20px; text-align:center;">
+      <div style="font-size:22px; margin-bottom:6px;">⏱</div>
+      <div style="font-size:15px; font-weight:500; color:#854F0B;" id="blockTitle">
+        Attendance not open yet
+      </div>
+      <div style="font-size:13px; color:#BA7517; margin-top:4px;" id="blockMessage">
+        Check back closer to your class time
+      </div>
+    </div>
+
+    <!-- Match/error result -->
     <div id="scanResult" style="margin-top:1rem; display:none;"></div>
 
     <div style="margin-top:1rem; text-align:center;">
@@ -93,31 +107,59 @@
     }
 
     async function scanFace() {
-      document.getElementById('scanStatus').textContent = 'Scanning…';
+      // Reset previous results
+      document.getElementById('blockBanner').style.display = 'none';
+      document.getElementById('scanResult').style.display = 'none';
+      document.getElementById('scanStatus').textContent = 'Checking…';
+
       const res = await fetch('/student/scan/recognize', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'}
       });
       const data = await res.json();
-      const resultDiv = document.getElementById('scanResult');
-      resultDiv.style.display = 'block';
 
       if (data.status === 'match') {
+        document.getElementById('scanStatus').textContent = 'Matched!';
         clearInterval(feedInterval);
         window.location.href = '/student/success';
+
       } else if (data.status === 'no_match') {
+        document.getElementById('scanStatus').textContent = 'Try again';
+        const resultDiv = document.getElementById('scanResult');
+        resultDiv.style.display = 'block';
         resultDiv.innerHTML = `
           <div style="background:var(--red-soft); color:var(--red-text);
-               padding:12px 16px; border-radius:var(--radius-sm); font-size:14px;">
+               padding:12px 16px; border-radius:var(--radius-sm); font-size:14px;
+               text-align:center;">
             ✕ Face not recognised — adjust lighting and try again
           </div>`;
-        document.getElementById('scanStatus').textContent = 'Try again';
+
       } else {
-        resultDiv.innerHTML = `
-          <div style="background:var(--gray-100); color:var(--gray-500);
-               padding:12px 16px; border-radius:var(--radius-sm); font-size:14px;">
-            ${data.message || 'Something went wrong'}
-          </div>`;
+        // Blocked — time window, already marked, or no photo
+        document.getElementById('scanStatus').textContent = 'Blocked';
+        const msg = data.message || 'Scanning not available right now';
+        const banner = document.getElementById('blockBanner');
+        banner.style.display = 'block';
+
+        if (msg.includes('opens in')) {
+          document.getElementById('blockTitle').textContent = 'Attendance not open yet';
+          document.getElementById('blockMessage').textContent = msg;
+        } else if (msg.includes('closed')) {
+          document.getElementById('blockTitle').textContent = 'Attendance window closed';
+          document.getElementById('blockMessage').textContent = msg;
+          banner.style.background = '#FAECE7';
+          banner.querySelector('#blockTitle').style.color = '#993C1D';
+          banner.querySelector('#blockMessage').style.color = '#D85A30';
+        } else if (msg.includes('already marked')) {
+          document.getElementById('blockTitle').textContent = 'Already marked today';
+          document.getElementById('blockMessage').textContent = 'Your attendance has been recorded for this class.';
+          banner.style.background = 'var(--teal-light)';
+          banner.querySelector('#blockTitle').style.color = 'var(--teal-dark)';
+          banner.querySelector('#blockMessage').style.color = 'var(--teal)';
+        } else {
+          document.getElementById('blockTitle').textContent = 'Cannot scan right now';
+          document.getElementById('blockMessage').textContent = msg;
+        }
       }
     }
   </script>

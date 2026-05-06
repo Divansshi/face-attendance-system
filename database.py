@@ -9,7 +9,6 @@ def init_db():
     conn = get_db()
     cursor = conn.cursor()
 
-    # Students table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS students (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,18 +20,16 @@ def init_db():
         )
     ''')
 
-    # Classes table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS classes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            course_code TEXT NOT NULL,
+            course_code TEXT UNIQUE NOT NULL,
             course_name TEXT NOT NULL,
             lecturer TEXT NOT NULL,
             schedule TEXT
         )
     ''')
 
-    # Attendance table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS attendance (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,17 +38,17 @@ def init_db():
             date TEXT NOT NULL,
             time TEXT NOT NULL,
             status TEXT DEFAULT 'present',
+            snapshot_path TEXT,
             FOREIGN KEY (student_id) REFERENCES students(student_id)
         )
     ''')
 
-    # Seed some classes
     cursor.execute('''
         INSERT OR IGNORE INTO classes (course_code, course_name, lecturer, schedule)
         VALUES
-        ('CS301', 'Algorithms', 'Dr. Amirah', '10:00 AM Wed'),
-        ('CS201', 'Data Structures', 'Dr. Amirah', '2:00 PM Wed'),
-        ('CS401', 'Machine Learning', 'Dr. Amirah', '4:00 PM Wed')
+        ('CS301', 'Algorithms', 'Dr. Amirah', '10:00'),
+        ('CS201', 'Data Structures', 'Dr. Amirah', '14:00'),
+        ('CS401', 'Machine Learning', 'Dr. Amirah', '16:00')
     ''')
 
     conn.commit()

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Audit Trail — AttendAI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+
+  <nav class="navbar">
+    <a href="/lecturer/dashboard" class="nav-brand">AttendAI</a>
+    <div class="nav-links">
+      <a href="/lecturer/dashboard" class="nav-link">Dashboard</a>
+      <a href="/lecturer/enroll" class="nav-link">Enroll</a>
+      <a href="/lecturer/recognition" class="nav-link">Capture</a>
+      <a href="/lecturer/audit" class="nav-link active">Audit</a>
+    </div>
+    <div class="nav-profile">
+      <button class="profile-btn" onclick="toggleDropdown()">DA</button>
+      <div class="profile-dropdown" id="profileDropdown">
+        <div class="profile-info">
+          <div class="profile-name">Dr. Amirah</div>
+          <div class="profile-email">amirah@university.edu</div>
+        </div>
+        <a href="/lecturer/logout" class="dropdown-item danger">Sign out</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-wrapper page-top" style="max-width:640px;">
+
+    <div class="page-header">
+      <h2>Audit trail</h2>
+    </div>
+    <p class="subtitle" style="margin-top:-1rem; margin-bottom:1.5rem;">
+      Every attendance mark with face snapshot
+    </p>
+
+    {% if records %}
+      {% for r in records %}
+      <div class="section-card" style="margin-bottom:1rem; padding:0; overflow:hidden;">
+        <div style="display:flex; justify-content:space-between; align-items:center;
+                    padding:12px 16px; border-bottom:1px solid var(--gray-100);">
+          <div>
+            <div style="font-size:14px; font-weight:500;">{{ r['full_name'] }}</div>
+            <div style="font-size:12px; color:var(--gray-500);">
+              {{ r['student_id'] }} · {{ r['course_code'] }}
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px; font-weight:500;">{{ r['date'] }}</div>
+            <div style="font-size:12px; color:var(--gray-500);">{{ r['time'] }}</div>
+          </div>
+        </div>
+
+        {% if r['snapshot_path'] %}
+        <div style="padding:12px 16px;">
+          <p style="font-size:11px; color:var(--gray-500); text-transform:uppercase;
+                    letter-spacing:0.06em; margin-bottom:8px;">Face snapshot</p>
+          <img src="/{{ r['snapshot_path'] }}"
+               style="width:100%; max-width:280px; border-radius:var(--radius-sm);
+                      border:0.5px solid var(--gray-300);" />
+        </div>
+        {% else %}
+        <div style="padding:12px 16px; font-size:13px; color:var(--gray-500);">
+          No snapshot — marked via lecturer portal
+        </div>
+        {% endif %}
+
+      </div>
+      {% endfor %}
+
+    {% else %}
+      <div class="section-card" style="text-align:center; color:var(--gray-500);
+                                        font-size:14px; padding:2rem;">
+        No attendance records yet
+      </div>
+    {% endif %}
+
+  </div>
+
+  <script>
+    function toggleDropdown() {
+      document.getElementById('profileDropdown').classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.nav-profile')) {
+        document.getElementById('profileDropdown').classList.remove('open');
+      }
+    });
+  </script>
+
+</body>
+</html>
