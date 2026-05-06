@@ -2,7 +2,7 @@ from flask import Flask, render_template
 
 app = Flask(__name__, template_folder='.')
 
-# Lecturer routes
+# ── Lecturer routes ──
 @app.route('/lecturer/login')
 def lecturer_login():
     return render_template('lecturer/login.html')
@@ -17,9 +17,9 @@ def lecturer_enroll():
 
 @app.route('/lecturer/recognition')
 def lecturer_recognition():
-    return render_template('lecturer/recgnition.html')
+    return render_template('lecturer/recognition.html')
 
-# Student routes
+# ── Student routes ──
 @app.route('/student/login')
 def student_login():
     return render_template('student/login.html')
@@ -40,10 +40,6 @@ def student_error():
 def student_record():
     return render_template('student/record.html')
 
-# Home route
-@app.route('/')
-def home():
-    return render_template('index.html')
-
+# ── Entry point ──
 if __name__ == '__main__':
     app.run(debug=True)
