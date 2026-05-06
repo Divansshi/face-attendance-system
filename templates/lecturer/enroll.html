@@ -22,7 +22,7 @@
           <div class="profile-name">Dr. Amirah</div>
           <div class="profile-email">amirah@university.edu</div>
         </div>
-        <a href="/lecturer/login" class="dropdown-item danger">Sign out</a>
+        <a href="/lecturer/logout" class="dropdown-item danger">Sign out</a>
       </div>
     </div>
   </nav>
@@ -34,26 +34,27 @@
       <h2>Enroll student</h2>
     </div>
 
-    <div class="section-card">
-      <p class="section-label">Student details</p>
-      <label for="name">Full name</label>
-      <input type="text" id="name" placeholder="e.g. Ahmad Faris" />
-      <label for="sid">Student ID</label>
-      <input type="text" id="sid" placeholder="e.g. 2021234567" />
-      <label for="course">Course</label>
-      <input type="text" id="course" placeholder="e.g. CS301 — Algorithms" />
-    </div>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="warning-banner" style="margin-bottom:1rem;">
+          <span class="warning-icon">⚠</span>
+          <span>{{ messages[0] }}</span>
+        </div>
+      {% endif %}
+    {% endwith %}
 
-    <div class="section-card">
-      <p class="section-label">Face photo</p>
-      <div class="upload-zone">
-        <div class="upload-icon">↑</div>
-        <div>Click to upload a clear photo</div>
-        <div style="font-size: 12px; margin-top: 4px;">JPG or PNG · Face must be visible</div>
+    <form method="POST" action="/lecturer/enroll">
+      <div class="section-card">
+        <p class="section-label">Student details</p>
+        <label for="name">Full name</label>
+        <input type="text" id="name" name="name" placeholder="e.g. Ahmad Faris" required />
+        <label for="sid">Student ID</label>
+        <input type="text" id="sid" name="sid" placeholder="e.g. 2021234567" required />
+        <label for="course">Course code</label>
+        <input type="text" id="course" name="course" placeholder="e.g. CS301" required />
       </div>
-    </div>
-
-    <a href="/lecturer/dashboard" class="btn btn-primary">Enroll student</a>
+      <button type="submit" class="btn btn-primary">Enroll student</button>
+    </form>
 
   </div>
 

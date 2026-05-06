@@ -22,7 +22,7 @@
           <div class="profile-name">Dr. Amirah</div>
           <div class="profile-email">amirah@university.edu</div>
         </div>
-        <a href="/lecturer/login" class="dropdown-item danger">Sign out</a>
+        <a href="/lecturer/logout" class="dropdown-item danger">Sign out</a>
       </div>
     </div>
   </nav>
@@ -50,30 +50,33 @@
       <div style="padding: 12px 16px; border-bottom: 1px solid var(--gray-100);">
         <p class="section-label" style="margin-bottom:0;">Marked present today</p>
       </div>
+
+      {% for p in present %}
       <div class="detect-row">
-        <div class="avatar">AF</div>
-        <div class="detect-name">Ahmad Faris</div>
-        <div class="detect-time">10:02 AM</div>
+        <div class="avatar">{{ p['full_name'][:2].upper() }}</div>
+        <div class="detect-name">{{ p['full_name'] }}</div>
+        <div class="detect-time">{{ p['time'] }}</div>
         <span class="badge-present">Present</span>
       </div>
+      {% endfor %}
+
+      {% for s in absent %}
       <div class="detect-row">
-        <div class="avatar">SL</div>
-        <div class="detect-name">Siti Liyana</div>
-        <div class="detect-time">10:04 AM</div>
-        <span class="badge-present">Present</span>
-      </div>
-      <div class="detect-row">
-        <div class="avatar">RK</div>
-        <div class="detect-name">Rajan Kumar</div>
-        <div class="detect-time">10:05 AM</div>
-        <span class="badge-present">Present</span>
-      </div>
-      <div class="detect-row">
-        <div class="avatar" style="background:var(--gray-100); color:var(--gray-500);">NZ</div>
-        <div class="detect-name" style="color:var(--gray-500);">Nur Zara</div>
+        <div class="avatar" style="background:var(--gray-100); color:var(--gray-500);">
+          {{ s['full_name'][:2].upper() }}
+        </div>
+        <div class="detect-name" style="color:var(--gray-500);">{{ s['full_name'] }}</div>
         <div class="detect-time">—</div>
         <span class="badge-absent">Absent</span>
       </div>
+      {% endfor %}
+
+      {% if not present and not absent %}
+      <div style="padding: 1.5rem; text-align:center; color: var(--gray-500); font-size:14px;">
+        No students enrolled in CS301 yet
+      </div>
+      {% endif %}
+
     </div>
 
     <a href="/lecturer/dashboard" class="btn btn-outline">← Back to dashboard</a>
