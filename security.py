@@ -1,9 +1,9 @@
 from datetime import datetime, timedelta
 from database import get_db
 
-TESTING_TIME = True
+TESTING_TIME = False
 TESTING_LOCATION = False
-CAMPUS_IP_PREFIX = '127.0.0.'
+CAMPUS_IP_PREFIX = '192.168.'
 
 def is_within_session_window(course_code, window_minutes=15):
     if TESTING_TIME:

@@ -18,10 +18,6 @@ SNAPSHOT_FOLDER = 'static/snapshots'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(SNAPSHOT_FOLDER, exist_ok=True)
 
-# Testing only — override the IP seen by check_location
-# Set to None in production
-OVERRIDE_IP = None
-
 with app.app_context():
     init_db()
 
@@ -38,17 +34,6 @@ def verify_faces(img1_path, img2_path):
     except Exception as e:
         print(f"Verify error: {e}")
         return False
-
-def get_client_ip():
-    """Returns OVERRIDE_IP if set, otherwise the real remote address."""
-    return OVERRIDE_IP if OVERRIDE_IP else request.remote_addr
-
-# ── Dev testing route ── Remove before production
-@app.route('/test/set-ip', methods=['POST'])
-def test_set_ip():
-    global OVERRIDE_IP
-    OVERRIDE_IP = request.json.get('ip')
-    return jsonify({'override_ip': OVERRIDE_IP})
 
 # ── Lecturer routes ──
 
@@ -217,7 +202,7 @@ def student_scan_recognize():
         if not student_id:
             return jsonify({'status': 'error', 'message': 'Not logged in'})
 
-        ip = get_client_ip()
+        ip = request.remote_addr
         allowed, location_label, location_message = check_location(ip, 'CS301')
         if not allowed:
             return jsonify({'status': 'error', 'message': location_message})
