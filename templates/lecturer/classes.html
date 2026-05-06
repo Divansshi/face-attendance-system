@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Class Settings — AttendAI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <style>
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-label { font-size: 14px; font-weight: 500; }
+    .toggle-meta { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+    .hybrid-pill {
+      font-size: 11px; padding: 3px 10px; border-radius: 99px;
+      background: var(--teal-light); color: var(--teal-dark); font-weight: 500;
+    }
+    .onsite-pill {
+      font-size: 11px; padding: 3px 10px; border-radius: 99px;
+      background: var(--gray-100); color: var(--gray-500); font-weight: 500;
+    }
+    .toggle-switch {
+      position: relative; width: 44px; height: 24px;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--gray-300); border-radius: 24px; transition: 0.2s;
+    }
+    .slider:before {
+      position: absolute; content: ""; height: 18px; width: 18px;
+      left: 3px; bottom: 3px; background: white;
+      border-radius: 50%; transition: 0.2s;
+    }
+    input:checked + .slider { background: var(--teal); }
+    input:checked + .slider:before { transform: translateX(20px); }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <a href="/lecturer/dashboard" class="nav-brand">AttendAI</a>
+    <div class="nav-links">
+      <a href="/lecturer/dashboard" class="nav-link">Dashboard</a>
+      <a href="/lecturer/enroll" class="nav-link">Enroll</a>
+      <a href="/lecturer/recognition" class="nav-link">Capture</a>
+      <a href="/lecturer/audit" class="nav-link">Audit</a>
+      <a href="/lecturer/classes" class="nav-link active">Classes</a>
+    </div>
+    <div class="nav-profile">
+      <button class="profile-btn" onclick="toggleDropdown()">DA</button>
+      <div class="profile-dropdown" id="profileDropdown">
+        <div class="profile-info">
+          <div class="profile-name">Dr. Amirah</div>
+          <div class="profile-email">amirah@university.edu</div>
+        </div>
+        <a href="/lecturer/logout" class="dropdown-item danger">Sign out</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-wrapper page-top">
+
+    <div class="page-header">
+      <h2>Class settings</h2>
+    </div>
+    <p class="subtitle" style="margin-top:-1rem; margin-bottom:1.5rem;">
+      Toggle hybrid mode to allow remote attendance
+    </p>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div style="background:var(--teal-light); color:var(--teal-dark);
+             padding:12px 16px; border-radius:var(--radius-sm);
+             font-size:14px; margin-bottom:1rem;">
+          ✓ {{ messages[0] }}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <div class="section-card" style="padding:0; overflow:hidden;">
+      {% for c in classes %}
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">{{ c['course_code'] }} — {{ c['course_name'] }}</div>
+          <div class="toggle-meta">
+            {{ c['schedule'] }} ·
+            {% if c['hybrid'] %}
+              <span class="hybrid-pill">Hybrid</span>
+            {% else %}
+              <span class="onsite-pill">On-site only</span>
+            {% endif %}
+          </div>
+        </div>
+        <form method="POST" action="/lecturer/classes">
+          <input type="hidden" name="course_code" value="{{ c['course_code'] }}" />
+          <label class="toggle-switch">
+            <input type="checkbox" name="hybrid"
+                   {% if c['hybrid'] %}checked{% endif %}
+                   onchange="this.form.submit()" />
+            <span class="slider"></span>
+          </label>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="section-card" style="margin-top:1rem; font-size:13px;
+                                      color:var(--gray-500); line-height:1.6;">
+      <strong style="color:var(--gray-800);">Hybrid mode on</strong> — students can
+      mark attendance from any location. Their record will show
+      <span style="color:var(--teal-dark); font-weight:500;">Remote</span> instead of
+      <span style="color:var(--gray-800); font-weight:500;">On-site</span>.
+      <br /><br />
+      <strong style="color:var(--gray-800);">Hybrid mode off</strong> — students must
+      be connected to campus WiFi to mark attendance.
+    </div>
+
+  </div>
+
+  <script>
+    function toggleDropdown() {
+      document.getElementById('profileDropdown').classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.nav-profile')) {
+        document.getElementById('profileDropdown').classList.remove('open');
+      }
+    });
+  </script>
+
+</body>
+</html>

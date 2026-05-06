@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta
 from database import get_db
 
-TESTING = True  # set to False when deploying for real
+TESTING_TIME = True
+TESTING_LOCATION = False
+CAMPUS_IP_PREFIX = '127.0.0.'
 
 def is_within_session_window(course_code, window_minutes=15):
-    if TESTING:
+    if TESTING_TIME:
         return True, 'Testing mode — window bypassed'
 
     conn = get_db()
@@ -26,7 +28,6 @@ def is_within_session_window(course_code, window_minutes=15):
             second=0,
             microsecond=0
         )
-
         window_start = class_today - timedelta(minutes=window_minutes)
         window_end = class_today + timedelta(minutes=window_minutes)
 
@@ -51,3 +52,29 @@ def has_marked_today(student_id, course_code):
     ).fetchone()
     conn.close()
     return existing is not None
+
+def check_location(ip_address, course_code):
+    conn = get_db()
+    course = conn.execute(
+        'SELECT hybrid FROM classes WHERE course_code = ?',
+        (course_code,)
+    ).fetchone()
+    conn.close()
+
+    if not course:
+        return False, None, 'Course not found'
+
+    is_hybrid = course['hybrid'] == 1
+
+    if ip_address in ('127.0.0.1', '::1'):
+        return True, 'on-site', 'Local network'
+
+    on_campus = ip_address.startswith(CAMPUS_IP_PREFIX)
+
+    if on_campus:
+        return True, 'on-site', 'On campus network'
+
+    if is_hybrid:
+        return True, 'remote', 'Remote attendance allowed for this class'
+
+    return False, None, 'You must be connected to the campus WiFi to mark attendance'

@@ -15,6 +15,7 @@
       <a href="/lecturer/enroll" class="nav-link">Enroll</a>
       <a href="/lecturer/recognition" class="nav-link active">Capture</a>
       <a href="/lecturer/audit" class="nav-link">Audit</a>
+      <a href="/lecturer/classes" class="nav-link">Classes</a>
     </div>
     <div class="nav-profile">
       <button class="profile-btn" onclick="toggleDropdown()">DA</button>
@@ -68,6 +69,11 @@
           <div class="avatar">{{ p['full_name'][:2].upper() }}</div>
           <div class="detect-name">{{ p['full_name'] }}</div>
           <div class="detect-time">{{ p['time'] }}</div>
+          {% if p['location'] == 'remote' %}
+          <span style="font-size:11px; color:var(--teal-dark);
+                       background:var(--teal-light); padding:2px 8px;
+                       border-radius:99px; margin-right:6px;">Remote</span>
+          {% endif %}
           <span class="badge-present">Present</span>
         </div>
         {% endfor %}

@@ -1,11 +1,12 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from database import get_db, init_db
 from camera import camera
-from security import is_within_session_window, has_marked_today
+from security import is_within_session_window, has_marked_today, check_location
 from datetime import datetime
 from werkzeug.utils import secure_filename
 import cv2
-from deepface import DeepFace
+import subprocess
+import json as json_module
 import os
 import time
 
@@ -17,8 +18,37 @@ SNAPSHOT_FOLDER = 'static/snapshots'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(SNAPSHOT_FOLDER, exist_ok=True)
 
+# Testing only — override the IP seen by check_location
+# Set to None in production
+OVERRIDE_IP = None
+
 with app.app_context():
     init_db()
+
+def verify_faces(img1_path, img2_path):
+    try:
+        result = subprocess.run(
+            ['python3', 'recognize.py', img1_path, img2_path],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        data = json_module.loads(result.stdout.strip())
+        return data.get('verified', False)
+    except Exception as e:
+        print(f"Verify error: {e}")
+        return False
+
+def get_client_ip():
+    """Returns OVERRIDE_IP if set, otherwise the real remote address."""
+    return OVERRIDE_IP if OVERRIDE_IP else request.remote_addr
+
+# ── Dev testing route ── Remove before production
+@app.route('/test/set-ip', methods=['POST'])
+def test_set_ip():
+    global OVERRIDE_IP
+    OVERRIDE_IP = request.json.get('ip')
+    return jsonify({'override_ip': OVERRIDE_IP})
 
 # ── Lecturer routes ──
 
@@ -55,7 +85,8 @@ def lecturer_dashboard():
             'name': c['course_name'],
             'total': total,
             'rate': rate,
-            'schedule': c['schedule']
+            'schedule': c['schedule'],
+            'hybrid': c['hybrid']
         })
 
     conn.close()
@@ -100,7 +131,7 @@ def lecturer_recognition():
     today = datetime.now().strftime('%Y-%m-%d')
 
     present = conn.execute('''
-        SELECT s.full_name, s.student_id, a.time, a.snapshot_path
+        SELECT s.full_name, s.student_id, a.time, a.snapshot_path, a.location
         FROM attendance a
         JOIN students s ON a.student_id = s.student_id
         WHERE a.course_code = 'CS301' AND a.date = ?
@@ -118,6 +149,36 @@ def lecturer_recognition():
     return render_template('lecturer/recognition.html',
                            present=present,
                            absent=absent)
+
+@app.route('/lecturer/audit')
+def lecturer_audit():
+    conn = get_db()
+    records = conn.execute('''
+        SELECT a.id, s.full_name, s.student_id, a.course_code,
+               a.date, a.time, a.snapshot_path, a.location
+        FROM attendance a
+        JOIN students s ON a.student_id = s.student_id
+        ORDER BY a.date DESC, a.time DESC
+    ''').fetchall()
+    conn.close()
+    return render_template('lecturer/audit.html', records=records)
+
+@app.route('/lecturer/classes', methods=['GET', 'POST'])
+def lecturer_classes():
+    conn = get_db()
+    if request.method == 'POST':
+        course_code = request.form['course_code']
+        hybrid = 1 if request.form.get('hybrid') == 'on' else 0
+        conn.execute(
+            'UPDATE classes SET hybrid = ? WHERE course_code = ?',
+            (hybrid, course_code)
+        )
+        conn.commit()
+        flash(f'{course_code} updated successfully')
+
+    classes = conn.execute('SELECT * FROM classes').fetchall()
+    conn.close()
+    return render_template('lecturer/classes.html', classes=classes)
 
 @app.route('/lecturer/logout')
 def lecturer_logout():
@@ -151,52 +212,60 @@ def student_scan():
 
 @app.route('/student/scan/recognize', methods=['POST'])
 def student_scan_recognize():
-    student_id = session.get('student_id')
-    if not student_id:
-        return jsonify({'status': 'error', 'message': 'Not logged in'})
-
-    # Check session time window
-    allowed, message = is_within_session_window('CS301')
-    if not allowed:
-        return jsonify({'status': 'error', 'message': message})
-
-    # Check already marked today
-    if has_marked_today(student_id, 'CS301'):
-        return jsonify({'status': 'error', 'message': 'You have already marked attendance today'})
-
-    frame = camera.get_frame()
-    if frame is None:
-        return jsonify({'status': 'error', 'message': 'No camera frame — click Start camera first'})
-
-    conn = get_db()
-    student = conn.execute(
-        'SELECT * FROM students WHERE student_id = ? AND photo_path IS NOT NULL',
-        (student_id,)
-    ).fetchone()
-    conn.close()
-
-    if not student:
-        return jsonify({'status': 'error', 'message': 'No photo enrolled for this student'})
-
-    temp_path = 'static/temp_frame.jpg'
-    cv2.imwrite(temp_path, frame)
-
     try:
-        result = DeepFace.verify(
-            img1_path=temp_path,
-            img2_path=student['photo_path'],
-            enforce_detection=False
-        )
-        if result['verified']:
-            # Save audit snapshot
+        student_id = session.get('student_id')
+        if not student_id:
+            return jsonify({'status': 'error', 'message': 'Not logged in'})
+
+        ip = get_client_ip()
+        allowed, location_label, location_message = check_location(ip, 'CS301')
+        if not allowed:
+            return jsonify({'status': 'error', 'message': location_message})
+
+        allowed_time, time_message = is_within_session_window('CS301')
+        if not allowed_time:
+            return jsonify({'status': 'error', 'message': time_message})
+
+        if has_marked_today(student_id, 'CS301'):
+            return jsonify({'status': 'error', 'message': 'You have already marked attendance today'})
+
+        frame = camera.get_frame()
+        if frame is None:
+            return jsonify({'status': 'error', 'message': 'No camera frame — click Start camera first'})
+
+        conn = get_db()
+        student = conn.execute(
+            'SELECT * FROM students WHERE student_id = ? AND photo_path IS NOT NULL',
+            (student_id,)
+        ).fetchone()
+        conn.close()
+
+        if not student:
+            return jsonify({'status': 'error', 'message': 'No photo enrolled for this student'})
+
+        temp_path = 'static/temp_frame.jpg'
+        cv2.imwrite(temp_path, frame)
+
+        if verify_faces(temp_path, student['photo_path']):
             snapshot_filename = f"{student_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
             snapshot_path = os.path.join(SNAPSHOT_FOLDER, snapshot_filename)
             cv2.imwrite(snapshot_path, frame)
-            camera.record_attendance(student_id, 'CS301', snapshot_path)
-            return jsonify({'status': 'match'})
+
+            conn = get_db()
+            today = datetime.now().strftime('%Y-%m-%d')
+            now = datetime.now().strftime('%H:%M')
+            conn.execute(
+                'INSERT INTO attendance (student_id, course_code, date, time, snapshot_path, location) VALUES (?, ?, ?, ?, ?, ?)',
+                (student_id, 'CS301', today, now, snapshot_path, location_label)
+            )
+            conn.commit()
+            conn.close()
+            return jsonify({'status': 'match', 'location': location_label})
         else:
             return jsonify({'status': 'no_match'})
+
     except Exception as e:
+        print(f"Route error: {e}")
         return jsonify({'status': 'error', 'message': str(e)})
 
 @app.route('/student/success')
@@ -219,7 +288,7 @@ def student_record():
     conn = get_db()
 
     records = conn.execute('''
-        SELECT date, time, status, course_code
+        SELECT date, time, status, course_code, location
         FROM attendance
         WHERE student_id = ?
         ORDER BY date DESC
@@ -274,41 +343,35 @@ def camera_feed():
 
 @app.route('/camera/recognize', methods=['POST'])
 def camera_recognize():
-    course_code = request.json.get('course_code', 'CS301')
-    frame = camera.get_frame()
-    if frame is None:
-        return jsonify({'status': 'error', 'message': 'No camera frame available'})
+    try:
+        course_code = request.json.get('course_code', 'CS301')
+        frame = camera.get_frame()
+        if frame is None:
+            return jsonify({'status': 'error', 'message': 'No camera frame available'})
 
-    student, result = camera.recognize_face(frame, course_code)
+        student, result = camera.recognize_face(frame, course_code)
 
-    if result == 'match':
-        snapshot_filename = f"{student['student_id']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
-        snapshot_path = os.path.join(SNAPSHOT_FOLDER, snapshot_filename)
-        cv2.imwrite(snapshot_path, frame)
-        recorded = camera.record_attendance(student['student_id'], course_code, snapshot_path)
-        return jsonify({
-            'status': 'match',
-            'name': student['full_name'],
-            'student_id': student['student_id'],
-            'recorded': recorded
-        })
-    elif result == 'no_students':
-        return jsonify({'status': 'error', 'message': 'No enrolled students with photos'})
-    else:
-        return jsonify({'status': 'no_match'})
+        if result == 'match':
+            snapshot_filename = f"{student['student_id']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+            snapshot_path = os.path.join(SNAPSHOT_FOLDER, snapshot_filename)
+            cv2.imwrite(snapshot_path, frame)
+            recorded = camera.record_attendance(
+                student['student_id'], course_code, snapshot_path
+            )
+            return jsonify({
+                'status': 'match',
+                'name': student['full_name'],
+                'student_id': student['student_id'],
+                'recorded': recorded
+            })
+        elif result == 'no_students':
+            return jsonify({'status': 'error', 'message': 'No enrolled students with photos'})
+        else:
+            return jsonify({'status': 'no_match'})
 
-@app.route('/lecturer/audit')
-def lecturer_audit():
-    conn = get_db()
-    records = conn.execute('''
-        SELECT a.id, s.full_name, s.student_id, a.course_code,
-               a.date, a.time, a.snapshot_path
-        FROM attendance a
-        JOIN students s ON a.student_id = s.student_id
-        ORDER BY a.date DESC, a.time DESC
-    ''').fetchall()
-    conn.close()
-    return render_template('lecturer/audit.html', records=records)
+    except Exception as e:
+        print(f"Camera recognize error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)})
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    app.run(debug=True, port=5001, threaded=True, use_reloader=False)

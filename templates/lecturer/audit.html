@@ -15,6 +15,7 @@
       <a href="/lecturer/enroll" class="nav-link">Enroll</a>
       <a href="/lecturer/recognition" class="nav-link">Capture</a>
       <a href="/lecturer/audit" class="nav-link active">Audit</a>
+      <a href="/lecturer/classes" class="nav-link">Classes</a>
     </div>
     <div class="nav-profile">
       <button class="profile-btn" onclick="toggleDropdown()">DA</button>
@@ -34,18 +35,24 @@
       <h2>Audit trail</h2>
     </div>
     <p class="subtitle" style="margin-top:-1rem; margin-bottom:1.5rem;">
-      Every attendance mark with face snapshot
+      Every attendance mark with face snapshot and location
     </p>
 
     {% if records %}
       {% for r in records %}
       <div class="section-card" style="margin-bottom:1rem; padding:0; overflow:hidden;">
+
         <div style="display:flex; justify-content:space-between; align-items:center;
                     padding:12px 16px; border-bottom:1px solid var(--gray-100);">
           <div>
             <div style="font-size:14px; font-weight:500;">{{ r['full_name'] }}</div>
-            <div style="font-size:12px; color:var(--gray-500);">
-              {{ r['student_id'] }} · {{ r['course_code'] }}
+            <div style="font-size:12px; color:var(--gray-500); margin-top:2px;">
+              {{ r['student_id'] }} · {{ r['course_code'] }} ·
+              {% if r['location'] == 'remote' %}
+                <span style="color:var(--teal-dark);">Remote</span>
+              {% else %}
+                <span>On-site</span>
+              {% endif %}
             </div>
           </div>
           <div style="text-align:right;">
