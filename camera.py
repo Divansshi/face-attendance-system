@@ -5,6 +5,7 @@ from datetime import datetime
 import threading
 import base64
 import time
+import os
 
 class AttendanceCamera:
     def __init__(self):
@@ -80,7 +81,7 @@ class AttendanceCamera:
 
         return None, 'no_match'
 
-    def record_attendance(self, student_id, course_code):
+    def record_attendance(self, student_id, course_code, snapshot_path=None):
         conn = get_db()
         today = datetime.now().strftime('%Y-%m-%d')
         now = datetime.now().strftime('%H:%M')
@@ -92,8 +93,8 @@ class AttendanceCamera:
 
         if not existing:
             conn.execute(
-                'INSERT INTO attendance (student_id, course_code, date, time) VALUES (?, ?, ?, ?)',
-                (student_id, course_code, today, now)
+                'INSERT INTO attendance (student_id, course_code, date, time, snapshot_path) VALUES (?, ?, ?, ?, ?)',
+                (student_id, course_code, today, now, snapshot_path)
             )
             conn.commit()
             conn.close()
