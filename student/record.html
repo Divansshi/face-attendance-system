@@ -3,29 +3,39 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Attendance — Attendance System</title>
+  <title>My Attendance — AttendAI</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body>
 
-  <div class="record-wrapper">
+  <nav class="navbar">
+    <a href="/student/scan" class="nav-brand">AttendAI</a>
+    <div class="nav-links">
+      <a href="/student/scan" class="nav-link">Scan</a>
+      <a href="/student/record" class="nav-link active">My attendance</a>
+    </div>
+    <div class="nav-profile">
+      <button class="profile-btn" onclick="toggleDropdown()">AF</button>
+      <div class="profile-dropdown" id="profileDropdown">
+        <div class="profile-info">
+          <div class="profile-name">Ahmad Faris</div>
+          <div class="profile-email">2021234567</div>
+        </div>
+        <a href="/student/login" class="dropdown-item danger">Sign out</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="record-wrapper page-top">
     <h2>My attendance</h2>
     <p class="subtitle">CS301 — Algorithms · Semester 2</p>
 
-    <!-- Percentage ring -->
     <div class="ring-card">
       <svg width="140" height="140" viewBox="0 0 140 140">
-        <!-- Background ring -->
         <circle cx="70" cy="70" r="54"
-          fill="none"
-          stroke="#E5E4DF"
-          stroke-width="12" />
-        <!-- Progress ring: circumference = 2π×54 ≈ 339.3 -->
-        <!-- 72% attended = 339.3 × 0.72 ≈ 244 -->
+          fill="none" stroke="#E5E4DF" stroke-width="12" />
         <circle cx="70" cy="70" r="54"
-          fill="none"
-          stroke="#1D9E75"
-          stroke-width="12"
+          fill="none" stroke="#1D9E75" stroke-width="12"
           stroke-linecap="round"
           stroke-dasharray="244 339.3"
           transform="rotate(-90 70 70)" />
@@ -37,13 +47,11 @@
       <p class="ring-label">13 of 18 classes · Threshold: 80%</p>
     </div>
 
-    <!-- Warning -->
     <div class="warning-banner">
       <span class="warning-icon">⚠</span>
       <span>Your attendance is below the 80% requirement. You need to attend the next <strong>3 classes</strong> to meet the threshold.</span>
     </div>
 
-    <!-- Session list -->
     <div class="session-list">
       <div class="session-row">
         <div>
@@ -68,7 +76,7 @@
       </div>
       <div class="session-row">
         <div>
-          <div>Week 7 — Lecture</div>
+          <div>Week 9 — Lecture</div>
           <div class="session-date">Wed 15 Apr</div>
         </div>
         <span class="badge-absent">Absent</span>
@@ -81,8 +89,18 @@
         <span class="badge-present">Present</span>
       </div>
     </div>
-
   </div>
+
+  <script>
+    function toggleDropdown() {
+      document.getElementById('profileDropdown').classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.nav-profile')) {
+        document.getElementById('profileDropdown').classList.remove('open');
+      }
+    });
+  </script>
 
 </body>
 </html>
