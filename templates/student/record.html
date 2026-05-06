@@ -16,7 +16,7 @@
     </div>
     <div class="nav-profile">
       <button class="profile-btn" onclick="toggleDropdown()">
-        {{ name[0] }}
+        {{ name[0].upper() }}
       </button>
       <div class="profile-dropdown" id="profileDropdown">
         <div class="profile-info">
@@ -62,10 +62,21 @@
           <div>{{ r['course_code'] }}</div>
           <div class="session-date">{{ r['date'] }} · {{ r['time'] }}</div>
         </div>
-        <span class="badge-present">Present</span>
+        <div style="display:flex; align-items:center; gap:8px;">
+          {% if r['location'] == 'remote' %}
+          <span style="font-size:11px; color:var(--teal-dark);
+                       background:var(--teal-light); padding:2px 8px;
+                       border-radius:99px;">Remote</span>
+          {% else %}
+          <span style="font-size:11px; color:var(--gray-500);
+                       background:var(--gray-100); padding:2px 8px;
+                       border-radius:99px;">On-site</span>
+          {% endif %}
+          <span class="badge-present">Present</span>
+        </div>
       </div>
       {% else %}
-      <div style="padding: 1.5rem; text-align:center; color: var(--gray-500); font-size:14px;">
+      <div style="padding:1.5rem; text-align:center; color:var(--gray-500); font-size:14px;">
         No attendance records yet
       </div>
       {% endfor %}

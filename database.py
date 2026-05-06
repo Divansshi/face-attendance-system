@@ -26,7 +26,8 @@ def init_db():
             course_code TEXT UNIQUE NOT NULL,
             course_name TEXT NOT NULL,
             lecturer TEXT NOT NULL,
-            schedule TEXT
+            schedule TEXT,
+            hybrid INTEGER DEFAULT 0
         )
     ''')
 
@@ -39,16 +40,17 @@ def init_db():
             time TEXT NOT NULL,
             status TEXT DEFAULT 'present',
             snapshot_path TEXT,
+            location TEXT DEFAULT 'on-site',
             FOREIGN KEY (student_id) REFERENCES students(student_id)
         )
     ''')
 
     cursor.execute('''
-        INSERT OR IGNORE INTO classes (course_code, course_name, lecturer, schedule)
+        INSERT OR IGNORE INTO classes (course_code, course_name, lecturer, schedule, hybrid)
         VALUES
-        ('CS301', 'Algorithms', 'Dr. Amirah', '10:00'),
-        ('CS201', 'Data Structures', 'Dr. Amirah', '14:00'),
-        ('CS401', 'Machine Learning', 'Dr. Amirah', '16:00')
+        ('CS301', 'Algorithms', 'Dr. Amirah', '10:00', 0),
+        ('CS201', 'Data Structures', 'Dr. Amirah', '14:00', 1),
+        ('CS401', 'Machine Learning', 'Dr. Amirah', '16:00', 0)
     ''')
 
     conn.commit()

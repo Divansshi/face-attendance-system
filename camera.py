@@ -1,11 +1,11 @@
 import cv2
-from deepface import DeepFace
+import subprocess
+import json as json_module
 from database import get_db
 from datetime import datetime
 import threading
 import base64
 import time
-import os
 
 class AttendanceCamera:
     def __init__(self):
@@ -68,20 +68,22 @@ class AttendanceCamera:
 
         for student in students:
             try:
-                result = DeepFace.verify(
-                    img1_path=temp_path,
-                    img2_path=student['photo_path'],
-                    enforce_detection=False
+                result = subprocess.run(
+                    ['python3', 'recognize.py', temp_path, student['photo_path']],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
                 )
-                if result['verified']:
+                data = json_module.loads(result.stdout.strip())
+                if data.get('verified', False):
                     return student, 'match'
             except Exception as e:
-                print(f"DeepFace error for {student['full_name']}: {e}")
+                print(f"Recognize error for {student['full_name']}: {e}")
                 continue
 
         return None, 'no_match'
 
-    def record_attendance(self, student_id, course_code, snapshot_path=None):
+    def record_attendance(self, student_id, course_code, snapshot_path=None, location='on-site'):
         conn = get_db()
         today = datetime.now().strftime('%Y-%m-%d')
         now = datetime.now().strftime('%H:%M')
@@ -93,8 +95,8 @@ class AttendanceCamera:
 
         if not existing:
             conn.execute(
-                'INSERT INTO attendance (student_id, course_code, date, time, snapshot_path) VALUES (?, ?, ?, ?, ?)',
-                (student_id, course_code, today, now, snapshot_path)
+                'INSERT INTO attendance (student_id, course_code, date, time, snapshot_path, location) VALUES (?, ?, ?, ?, ?, ?)',
+                (student_id, course_code, today, now, snapshot_path, location)
             )
             conn.commit()
             conn.close()

@@ -15,6 +15,7 @@
       <a href="/lecturer/enroll" class="nav-link">Enroll</a>
       <a href="/lecturer/recognition" class="nav-link">Capture</a>
       <a href="/lecturer/audit" class="nav-link">Audit</a>
+      <a href="/lecturer/classes" class="nav-link">Classes</a>
     </div>
     <div class="nav-profile">
       <button class="profile-btn" onclick="toggleDropdown()">DA</button>
@@ -66,7 +67,14 @@
       {% for c in classes %}
       <a href="/lecturer/recognition" class="class-row">
         <div class="class-info">
-          <div class="class-name">{{ c.code }} — {{ c.name }}</div>
+          <div class="class-name">
+            {{ c.code }} — {{ c.name }}
+            {% if c.hybrid %}
+              <span style="font-size:11px; background:var(--teal-light);
+                           color:var(--teal-dark); padding:2px 8px;
+                           border-radius:99px; margin-left:6px;">Hybrid</span>
+            {% endif %}
+          </div>
           <div class="class-meta">{{ c.total }} students · {{ c.schedule }}</div>
         </div>
         <span class="class-rate {% if c.rate < 80 %}low{% endif %}">{{ c.rate }}%</span>
