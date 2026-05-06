@@ -3,12 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Scan — Attendance System</title>
+  <title>Scan — AttendAI</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body>
 
-  <div class="scan-wrapper">
+  <nav class="navbar">
+    <a href="/student/scan" class="nav-brand">AttendAI</a>
+    <div class="nav-links">
+      <a href="/student/scan" class="nav-link active">Scan</a>
+      <a href="/student/record" class="nav-link">My attendance</a>
+    </div>
+    <div class="nav-profile">
+      <button class="profile-btn" onclick="toggleDropdown()">AF</button>
+      <div class="profile-dropdown" id="profileDropdown">
+        <div class="profile-info">
+          <div class="profile-name">Ahmad Faris</div>
+          <div class="profile-email">2021234567</div>
+        </div>
+        <a href="/student/login" class="dropdown-item danger">Sign out</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="scan-wrapper page-top">
     <h2>Mark your attendance</h2>
     <p class="subtitle">Position your face inside the frame</p>
 
@@ -24,6 +42,17 @@
     <a href="/student/success" class="btn btn-primary" style="width:100%;">Simulate success</a>
     <a href="/student/error" class="btn btn-outline" style="width:100%; margin-top:0.75rem;">Simulate error</a>
   </div>
+
+  <script>
+    function toggleDropdown() {
+      document.getElementById('profileDropdown').classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.nav-profile')) {
+        document.getElementById('profileDropdown').classList.remove('open');
+      }
+    });
+  </script>
 
 </body>
 </html>

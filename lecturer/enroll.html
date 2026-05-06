@@ -3,12 +3,31 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Enroll Student — Attendance System</title>
+  <title>Enroll Student — AttendAI</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body>
 
-  <div class="page-wrapper">
+  <nav class="navbar">
+    <a href="/lecturer/dashboard" class="nav-brand">AttendAI</a>
+    <div class="nav-links">
+      <a href="/lecturer/dashboard" class="nav-link">Dashboard</a>
+      <a href="/lecturer/enroll" class="nav-link active">Enroll</a>
+      <a href="/lecturer/recognition" class="nav-link">Capture</a>
+    </div>
+    <div class="nav-profile">
+      <button class="profile-btn" onclick="toggleDropdown()">DA</button>
+      <div class="profile-dropdown" id="profileDropdown">
+        <div class="profile-info">
+          <div class="profile-name">Dr. Amirah</div>
+          <div class="profile-email">amirah@university.edu</div>
+        </div>
+        <a href="/lecturer/login" class="dropdown-item danger">Sign out</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-wrapper page-top">
 
     <div class="page-header">
       <a href="/lecturer/dashboard" class="back-link">← Back</a>
@@ -17,13 +36,10 @@
 
     <div class="section-card">
       <p class="section-label">Student details</p>
-
       <label for="name">Full name</label>
       <input type="text" id="name" placeholder="e.g. Ahmad Faris" />
-
       <label for="sid">Student ID</label>
       <input type="text" id="sid" placeholder="e.g. 2021234567" />
-
       <label for="course">Course</label>
       <input type="text" id="course" placeholder="e.g. CS301 — Algorithms" />
     </div>
@@ -40,6 +56,17 @@
     <a href="/lecturer/dashboard" class="btn btn-primary">Enroll student</a>
 
   </div>
+
+  <script>
+    function toggleDropdown() {
+      document.getElementById('profileDropdown').classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.nav-profile')) {
+        document.getElementById('profileDropdown').classList.remove('open');
+      }
+    });
+  </script>
 
 </body>
 </html>

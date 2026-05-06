@@ -530,3 +530,168 @@ input:focus { border-color: var(--teal); }
 .class-rate.low { color: #BA7517; }
 
 .chevron { color: var(--gray-300); font-size: 14px; margin-left: 10px; }
+
+/* ── Nav bar ── */
+.navbar {
+  width: 100%;
+  background: var(--white);
+  border-bottom: 1px solid var(--gray-300);
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 100;
+}
+
+.nav-brand {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--teal);
+  text-decoration: none;
+}
+
+.nav-links {
+  display: flex;
+  gap: 4px;
+}
+
+.nav-link {
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--gray-500);
+  transition: background 0.15s, color 0.15s;
+}
+
+.nav-link:hover {
+  background: var(--gray-100);
+  color: var(--gray-800);
+}
+
+.nav-link.active {
+  background: var(--teal-light);
+  color: var(--teal-dark);
+  font-weight: 500;
+}
+
+/* Push page content below the fixed navbar */
+.page-top {
+  padding-top: 72px;
+}
+
+/* ── Profile menu ── */
+.nav-profile {
+  position: relative;
+}
+
+.profile-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--teal-light);
+  color: var(--teal-dark);
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.profile-btn:hover { background: var(--teal); color: var(--white); }
+
+.profile-dropdown {
+  display: none;
+  position: absolute;
+  top: 44px;
+  right: 0;
+  background: var(--white);
+  border: 0.5px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  min-width: 200px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  z-index: 200;
+}
+
+.profile-dropdown.open { display: block; }
+
+.profile-info {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.profile-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-800);
+}
+
+.profile-email {
+  font-size: 12px;
+  color: var(--gray-500);
+  margin-top: 2px;
+}
+
+.dropdown-item {
+  display: block;
+  padding: 10px 16px;
+  font-size: 14px;
+  color: var(--gray-800);
+  text-decoration: none;
+  transition: background 0.1s;
+}
+.dropdown-item:hover { background: var(--gray-100); }
+.dropdown-item.danger { color: var(--red-text); }
+
+/* ── Student nav ── */
+.nav-student {
+  font-size: 12px;
+  color: var(--gray-500);
+  padding: 0 12px;
+}
+
+/* ── Auth pages ── */
+.auth-wrapper {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.auth-logo {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--teal);
+  margin-bottom: 1.5rem;
+}
+
+/* ── Dropdown fix ── */
+.profile-dropdown.open {
+  display: block;
+  background: var(--white);
+  border: 0.5px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  min-width: 200px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  z-index: 200;
+}
+
+.dropdown-item.danger {
+  color: var(--red-text);
+  display: block;
+  padding: 10px 16px;
+  font-size: 14px;
+  text-decoration: none;
+  transition: background 0.1s;
+}
+
+.dropdown-item.danger:hover {
+  background: var(--red-soft);
+}
