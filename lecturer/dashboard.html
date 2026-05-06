@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Attendance System</title>
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+
+  <div class="dashboard-wrapper">
+
+    <div class="dash-header">
+      <h2>Good morning, Dr. Amirah</h2>
+      <p class="subtitle">Wednesday, 6 May 2026</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-number">3</div>
+        <div class="stat-desc">Classes today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number teal">84%</div>
+        <div class="stat-desc">Avg attendance</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number amber">5</div>
+        <div class="stat-desc">Below threshold</div>
+      </div>
+    </div>
+
+    <!-- Class list -->
+    <div class="section-card" style="padding: 0; overflow: hidden;">
+
+      <div style="padding: 12px 16px; border-bottom: 1px solid var(--gray-100);">
+        <p class="section-label" style="margin-bottom:0;">Your classes</p>
+      </div>
+
+      <a href="recognition.html" class="class-row">
+        <div class="class-info">
+          <div class="class-name">CS301 — Algorithms</div>
+          <div class="class-meta">32 students · 10:00 AM today</div>
+        </div>
+        <span class="class-rate">91%</span>
+        <span class="chevron">›</span>
+      </a>
+
+      <a href="recognition.html" class="class-row">
+        <div class="class-info">
+          <div class="class-name">CS201 — Data Structures</div>
+          <div class="class-meta">28 students · 2:00 PM today</div>
+        </div>
+        <span class="class-rate low">74%</span>
+        <span class="chevron">›</span>
+      </a>
+
+      <a href="recognition.html" class="class-row">
+        <div class="class-info">
+          <div class="class-name">CS401 — Machine Learning</div>
+          <div class="class-meta">24 students · 4:00 PM today</div>
+        </div>
+        <span class="class-rate">88%</span>
+        <span class="chevron">›</span>
+      </a>
+
+    </div>
+
+    <a href="enroll.html" class="btn btn-outline" style="margin-top: 1rem;">+ Enroll a student</a>
+
+  </div>
+
+</body>
+</html>
