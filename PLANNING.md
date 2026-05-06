@@ -8,9 +8,6 @@ Lecturers and institutions struggle with inaccurate, time-consuming manual atten
 - Secondary: Department admins
 
 ## User Stories
-# Planning.md
-
-## User Stories – Facial Recognition Attendance System
 
 | ID | Role     | I want to...                         | So that...                          |
 |----|----------|-------------------------------------|--------------------------------------|
