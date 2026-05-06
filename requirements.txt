@@ -6,7 +6,7 @@ gunicorn==26.0.0
 keras==3.14.0
 mtcnn==1.0.0
 numpy==2.4.4
-opencv-python==4.13.0.92
+opencv-python-headless==4.13.0.92
 pandas==3.0.2
 pillow==12.2.0
 requests==2.33.1
