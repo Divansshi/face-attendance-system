@@ -17,7 +17,7 @@ def lecturer_enroll():
 
 @app.route('/lecturer/recognition')
 def lecturer_recognition():
-    return render_template('lecturer/recognition.html')
+    return render_template('lecturer/recgnition.html')
 
 # ── Student routes ──
 @app.route('/student/login')
