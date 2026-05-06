@@ -15,35 +15,52 @@
       <a href="/student/record" class="nav-link">My attendance</a>
     </div>
     <div class="nav-profile">
-      <button class="profile-btn" onclick="toggleDropdown()">AF</button>
+      <button class="profile-btn" onclick="toggleDropdown()">
+        {{ name[0].upper() }}
+      </button>
       <div class="profile-dropdown" id="profileDropdown">
         <div class="profile-info">
-          <div class="profile-name">Ahmad Faris</div>
-          <div class="profile-email">2021234567</div>
+          <div class="profile-name">{{ name }}</div>
         </div>
-        <a href="/student/login" class="dropdown-item danger">Sign out</a>
+        <a href="/student/logout" class="dropdown-item danger">Sign out</a>
       </div>
     </div>
   </nav>
 
   <div class="scan-wrapper page-top">
     <h2>Mark your attendance</h2>
-    <p class="subtitle">Position your face inside the frame</p>
+    <p class="subtitle">Position your face inside the frame and click Scan</p>
 
-    <div class="camera-box">
-      <div class="camera-placeholder">Camera feed will appear here</div>
+    <div class="camera-box" id="cameraBox">
+      <img id="cameraFeed"
+           style="width:100%; height:100%; object-fit:cover; border-radius:12px; display:none;" />
+      <div class="camera-placeholder" id="cameraPlaceholder">Click Start camera to begin</div>
       <div class="bracket bracket-tl"></div>
       <div class="bracket bracket-tr"></div>
       <div class="bracket bracket-bl"></div>
       <div class="bracket bracket-br"></div>
-      <div class="scan-status">Waiting for face…</div>
+      <div class="scan-status" id="scanStatus">Ready</div>
     </div>
 
-    <a href="/student/success" class="btn btn-primary" style="width:100%;">Simulate success</a>
-    <a href="/student/error" class="btn btn-outline" style="width:100%; margin-top:0.75rem;">Simulate error</a>
+    <button onclick="startCamera()" class="btn btn-primary" style="width:100%;">
+      Start camera
+    </button>
+    <button onclick="scanFace()" class="btn btn-outline" style="width:100%; margin-top:0.75rem;">
+      Scan my face
+    </button>
+
+    <div id="scanResult" style="margin-top:1rem; display:none;"></div>
+
+    <div style="margin-top:1rem; text-align:center;">
+      <a href="/student/record" style="font-size:13px; color:var(--gray-500);">
+        View my attendance record →
+      </a>
+    </div>
   </div>
 
   <script>
+    let feedInterval = null;
+
     function toggleDropdown() {
       document.getElementById('profileDropdown').classList.toggle('open');
     }
@@ -52,6 +69,57 @@
         document.getElementById('profileDropdown').classList.remove('open');
       }
     });
+
+    async function startCamera() {
+      document.getElementById('scanStatus').textContent = 'Starting…';
+      document.getElementById('cameraPlaceholder').textContent = 'Warming up…';
+      await fetch('/camera/start');
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      document.getElementById('cameraPlaceholder').style.display = 'none';
+      document.getElementById('cameraFeed').style.display = 'block';
+      feedInterval = setInterval(updateFeed, 200);
+      document.getElementById('scanStatus').textContent = 'Camera active';
+    }
+
+    async function updateFeed() {
+      try {
+        const res = await fetch('/camera/feed');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.frame) {
+          document.getElementById('cameraFeed').src = 'data:image/jpeg;base64,' + data.frame;
+        }
+      } catch(e) {}
+    }
+
+    async function scanFace() {
+      document.getElementById('scanStatus').textContent = 'Scanning…';
+      const res = await fetch('/student/scan/recognize', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+      });
+      const data = await res.json();
+      const resultDiv = document.getElementById('scanResult');
+      resultDiv.style.display = 'block';
+
+      if (data.status === 'match') {
+        clearInterval(feedInterval);
+        window.location.href = '/student/success';
+      } else if (data.status === 'no_match') {
+        resultDiv.innerHTML = `
+          <div style="background:var(--red-soft); color:var(--red-text);
+               padding:12px 16px; border-radius:var(--radius-sm); font-size:14px;">
+            ✕ Face not recognised — adjust lighting and try again
+          </div>`;
+        document.getElementById('scanStatus').textContent = 'Try again';
+      } else {
+        resultDiv.innerHTML = `
+          <div style="background:var(--gray-100); color:var(--gray-500);
+               padding:12px 16px; border-radius:var(--radius-sm); font-size:14px;">
+            ${data.message || 'Something went wrong'}
+          </div>`;
+      }
+    }
   </script>
 
 </body>

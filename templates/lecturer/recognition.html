@@ -37,46 +37,57 @@
       </span>
     </div>
 
-    <div class="camera-box">
-      <div class="camera-placeholder">Camera feed will appear here</div>
+    <div class="camera-box" id="cameraBox">
+      <img id="cameraFeed"
+           style="width:100%; height:100%; object-fit:cover; border-radius:12px; display:none;" />
+      <div class="camera-placeholder" id="cameraPlaceholder">Click Start camera to begin</div>
       <div class="bracket bracket-tl"></div>
       <div class="bracket bracket-tr"></div>
       <div class="bracket bracket-bl"></div>
       <div class="bracket bracket-br"></div>
-      <div class="scan-status">Scanning…</div>
+      <div class="scan-status" id="scanStatus">Ready</div>
     </div>
+
+    <div style="display:flex; gap:10px;">
+      <button onclick="startCamera()" class="btn btn-primary" style="flex:1;">Start camera</button>
+      <button onclick="scanFace()" class="btn btn-outline" style="flex:1;">Scan face</button>
+      <button onclick="stopCamera()" class="btn btn-outline" style="flex:1;">Stop</button>
+    </div>
+
+    <div id="matchResult" style="display:none;"></div>
 
     <div class="section-card" style="padding: 0; overflow:hidden;">
       <div style="padding: 12px 16px; border-bottom: 1px solid var(--gray-100);">
         <p class="section-label" style="margin-bottom:0;">Marked present today</p>
       </div>
 
-      {% for p in present %}
-      <div class="detect-row">
-        <div class="avatar">{{ p['full_name'][:2].upper() }}</div>
-        <div class="detect-name">{{ p['full_name'] }}</div>
-        <div class="detect-time">{{ p['time'] }}</div>
-        <span class="badge-present">Present</span>
-      </div>
-      {% endfor %}
-
-      {% for s in absent %}
-      <div class="detect-row">
-        <div class="avatar" style="background:var(--gray-100); color:var(--gray-500);">
-          {{ s['full_name'][:2].upper() }}
+      <div id="attendanceList">
+        {% for p in present %}
+        <div class="detect-row">
+          <div class="avatar">{{ p['full_name'][:2].upper() }}</div>
+          <div class="detect-name">{{ p['full_name'] }}</div>
+          <div class="detect-time">{{ p['time'] }}</div>
+          <span class="badge-present">Present</span>
         </div>
-        <div class="detect-name" style="color:var(--gray-500);">{{ s['full_name'] }}</div>
-        <div class="detect-time">—</div>
-        <span class="badge-absent">Absent</span>
-      </div>
-      {% endfor %}
+        {% endfor %}
 
-      {% if not present and not absent %}
-      <div style="padding: 1.5rem; text-align:center; color: var(--gray-500); font-size:14px;">
-        No students enrolled in CS301 yet
-      </div>
-      {% endif %}
+        {% for s in absent %}
+        <div class="detect-row" id="student-{{ s['student_id'] }}">
+          <div class="avatar" style="background:var(--gray-100); color:var(--gray-500);">
+            {{ s['full_name'][:2].upper() }}
+          </div>
+          <div class="detect-name" style="color:var(--gray-500);">{{ s['full_name'] }}</div>
+          <div class="detect-time">—</div>
+          <span class="badge-absent">Absent</span>
+        </div>
+        {% endfor %}
 
+        {% if not present and not absent %}
+        <div style="padding:1.5rem; text-align:center; color:var(--gray-500); font-size:14px;">
+          No students enrolled in CS301 yet
+        </div>
+        {% endif %}
+      </div>
     </div>
 
     <a href="/lecturer/dashboard" class="btn btn-outline">← Back to dashboard</a>
@@ -84,6 +95,8 @@
   </div>
 
   <script>
+    let feedInterval = null;
+
     function toggleDropdown() {
       document.getElementById('profileDropdown').classList.toggle('open');
     }
@@ -92,6 +105,82 @@
         document.getElementById('profileDropdown').classList.remove('open');
       }
     });
+
+    async function startCamera() {
+      document.getElementById('scanStatus').textContent = 'Starting…';
+      document.getElementById('cameraPlaceholder').textContent = 'Warming up camera…';
+      await fetch('/camera/start');
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      document.getElementById('cameraPlaceholder').style.display = 'none';
+      document.getElementById('cameraFeed').style.display = 'block';
+      feedInterval = setInterval(updateFeed, 200);
+      document.getElementById('scanStatus').textContent = 'Camera active';
+    }
+
+    async function updateFeed() {
+      try {
+        const res = await fetch('/camera/feed');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.frame) {
+          document.getElementById('cameraFeed').src = 'data:image/jpeg;base64,' + data.frame;
+        }
+      } catch(e) {}
+    }
+
+    async function scanFace() {
+      document.getElementById('scanStatus').textContent = 'Scanning…';
+      const res = await fetch('/camera/recognize', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({course_code: 'CS301'})
+      });
+      const data = await res.json();
+      const resultDiv = document.getElementById('matchResult');
+      resultDiv.style.display = 'block';
+
+      if (data.status === 'match') {
+        resultDiv.innerHTML = `
+          <div style="background:var(--teal-light); color:var(--teal-dark);
+               padding:12px 16px; border-radius:var(--radius-sm); font-size:14px;">
+            ✓ Matched — ${data.name} marked present
+          </div>`;
+        document.getElementById('scanStatus').textContent = 'Match found!';
+
+        const row = document.getElementById('student-' + data.student_id);
+        if (row) {
+          row.querySelector('.detect-name').style.color = '';
+          row.querySelector('.avatar').style.background = '';
+          row.querySelector('.avatar').style.color = '';
+          row.querySelector('.badge-absent').outerHTML =
+            '<span class="badge-present">Present</span>';
+          row.querySelector('.detect-time').textContent =
+            new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        }
+      } else if (data.status === 'no_match') {
+        resultDiv.innerHTML = `
+          <div style="background:var(--red-soft); color:var(--red-text);
+               padding:12px 16px; border-radius:var(--radius-sm); font-size:14px;">
+            ✕ No match found — try again
+          </div>`;
+        document.getElementById('scanStatus').textContent = 'No match';
+      } else {
+        resultDiv.innerHTML = `
+          <div style="background:var(--gray-100); color:var(--gray-500);
+               padding:12px 16px; border-radius:var(--radius-sm); font-size:14px;">
+            ${data.message || 'Could not scan'}
+          </div>`;
+      }
+    }
+
+    async function stopCamera() {
+      clearInterval(feedInterval);
+      await fetch('/camera/stop');
+      document.getElementById('cameraFeed').style.display = 'none';
+      document.getElementById('cameraPlaceholder').style.display = 'flex';
+      document.getElementById('cameraPlaceholder').textContent = 'Camera stopped';
+      document.getElementById('scanStatus').textContent = 'Stopped';
+    }
   </script>
 
 </body>
