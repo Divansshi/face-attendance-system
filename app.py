@@ -4,7 +4,7 @@ from datetime import datetime
 import os
 
 app = Flask(__name__)
-app.secret_key = 'attendai-secret-key'
+app.secret_key = 'attendai-dev-secret-2026'
 
 # Initialise DB on startup
 with app.app_context():
@@ -134,31 +134,35 @@ def student_login():
 
 @app.route('/student/scan')
 def student_scan():
+    if not session.get('student_id'):
+        return redirect(url_for('student_login'))
     return render_template('student/scan.html',
                            name=session.get('student_name', 'Student'))
 
 @app.route('/student/success')
 def student_success():
-    # Record attendance
     student_id = session.get('student_id')
-    if student_id:
-        conn = get_db()
-        today = datetime.now().strftime('%Y-%m-%d')
-        now = datetime.now().strftime('%H:%M')
+    if not student_id:
+        return redirect(url_for('student_login'))
 
-        # Avoid duplicate entries
-        existing = conn.execute(
-            'SELECT id FROM attendance WHERE student_id = ? AND course_code = ? AND date = ?',
-            (student_id, 'CS301', today)
-        ).fetchone()
+    # Record attendance
+    conn = get_db()
+    today = datetime.now().strftime('%Y-%m-%d')
+    now = datetime.now().strftime('%H:%M')
 
-        if not existing:
-            conn.execute(
-                'INSERT INTO attendance (student_id, course_code, date, time) VALUES (?, ?, ?, ?)',
-                (student_id, 'CS301', today, now)
-            )
-            conn.commit()
-        conn.close()
+    # Avoid duplicate entries
+    existing = conn.execute(
+        'SELECT id FROM attendance WHERE student_id = ? AND course_code = ? AND date = ?',
+        (student_id, 'CS301', today)
+    ).fetchone()
+
+    if not existing:
+        conn.execute(
+            'INSERT INTO attendance (student_id, course_code, date, time) VALUES (?, ?, ?, ?)',
+            (student_id, 'CS301', today, now)
+        )
+        conn.commit()
+    conn.close()
 
     return render_template('student/success.html',
                            name=session.get('student_name', 'Student'),
@@ -171,6 +175,7 @@ def student_error():
 
 @app.route('/student/record')
 def student_record():
+    print("SESSION:", dict(session))  # add this line
     student_id = session.get('student_id')
     if not student_id:
         return redirect(url_for('student_login'))
