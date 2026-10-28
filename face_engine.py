@@ -1,7 +1,14 @@
-"""Face verification, loaded once per process.
+"""Face detection, embedding and matching.
 
-The model is built at import time (and baked into the Docker image at build
-time), so each scan only runs inference instead of reloading TensorFlow.
+Two interchangeable engines, chosen with the FACE_ENGINE environment variable:
+
+- "opencv" (default): OpenCV's YuNet detector + SFace recogniser (ONNX models in models/).
+  Small and fast. About 100 MB of RAM in total, so it runs on free hosting.
+- "deepface": DeepFace with the Facenet model on TensorFlow. Heavier (about 2 GB RAM).
+
+Both expose the same functions: decode_image, decode_bytes, has_face, verify, identify.
+Models load once per process, and each enrolled photo's embedding is computed once and cached,
+so a scan only has to embed the live frame.
 """
 import base64
 import os
@@ -9,23 +16,15 @@ import threading
 
 import cv2
 import numpy as np
-from deepface import DeepFace
-from deepface.modules.verification import find_distance, find_threshold
 
-MODEL_NAME = os.environ.get('FACE_MODEL', 'Facenet')
-DETECTOR = os.environ.get('FACE_DETECTOR', 'opencv')
-DISTANCE_METRIC = 'cosine'
-# DeepFace's tuned threshold for this model + metric (same value DeepFace.verify uses)
-THRESHOLD = float(os.environ.get('FACE_THRESHOLD', find_threshold(MODEL_NAME, DISTANCE_METRIC)))
+ENGINE = os.environ.get('FACE_ENGINE', 'opencv').lower()
+MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
 
-# TensorFlow inference isn't guaranteed thread-safe; scans are short, so serialise them.
+# Model inference isn't guaranteed thread-safe; scans are short, so serialise them.
 _lock = threading.Lock()
 
 
-def warm_up():
-    """Load model weights into memory (downloads them on first run)."""
-    DeepFace.build_model(MODEL_NAME)
-
+# ── Image decoding ─────────────────────────────────────────────
 
 def decode_bytes(raw):
     """Decode raw image bytes (JPEG/PNG) into a BGR image, or None."""
@@ -45,29 +44,96 @@ def decode_image(data_url):
         return None
 
 
-def has_face(image):
-    """True if at least one face is detected in the image."""
-    try:
-        with _lock:
-            faces = DeepFace.extract_faces(
-                img_path=image, detector_backend=DETECTOR, enforce_detection=True
-            )
-        return len(faces) >= 1
-    except ValueError:
-        return False
+def _load(image):
+    """Accept a file path or an already-decoded image."""
+    if isinstance(image, str):
+        img = cv2.imread(image, cv2.IMREAD_COLOR)
+        if img is None:
+            raise OSError(f'Could not read image: {image}')
+        return img
+    return image
 
+
+# ── OpenCV engine (YuNet + SFace) ──────────────────────────────
+
+class _OpenCVEngine:
+    MAX_SIDE = 1280           # downscale very large photos before detection
+    MATCH_THRESHOLD = 0.363   # SFace cosine similarity; OpenCV's recommended value
+
+    def __init__(self):
+        self.detector = cv2.FaceDetectorYN.create(
+            os.path.join(MODEL_DIR, 'face_detection_yunet_2023mar.onnx'), '', (320, 320),
+            score_threshold=0.8, nms_threshold=0.3, top_k=50,
+        )
+        self.recognizer = cv2.FaceRecognizerSF.create(
+            os.path.join(MODEL_DIR, 'face_recognition_sface_2021dec.onnx'), ''
+        )
+
+    def _prepare(self, img):
+        h, w = img.shape[:2]
+        scale = min(1.0, self.MAX_SIDE / max(h, w))
+        if scale < 1.0:
+            img = cv2.resize(img, (int(w * scale), int(h * scale)))
+        return img
+
+    def detect(self, img):
+        """Return the largest detected face row, or None."""
+        img = self._prepare(img)
+        h, w = img.shape[:2]
+        self.detector.setInputSize((w, h))
+        _, faces = self.detector.detect(img)
+        if faces is None or len(faces) == 0:
+            return img, None
+        largest = max(faces, key=lambda f: f[2] * f[3])
+        return img, largest
+
+    def embed(self, image):
+        img, face = self.detect(_load(image))
+        if face is None:
+            raise ValueError('No face detected')
+        aligned = self.recognizer.alignCrop(img, face)
+        return self.recognizer.feature(aligned)
+
+    def compare(self, a, b):
+        similarity = self.recognizer.match(a, b, cv2.FaceRecognizerSF_FR_COSINE)
+        return similarity >= self.MATCH_THRESHOLD, 1.0 - float(similarity)
+
+
+# ── DeepFace engine (Facenet) ──────────────────────────────────
+
+class _DeepFaceEngine:
+    MODEL_NAME = os.environ.get('FACE_MODEL', 'Facenet')
+    DETECTOR = os.environ.get('FACE_DETECTOR', 'opencv')
+
+    def __init__(self):
+        from deepface import DeepFace
+        from deepface.modules.verification import find_distance, find_threshold
+        self.DeepFace = DeepFace
+        self.find_distance = find_distance
+        self.threshold = float(os.environ.get('FACE_THRESHOLD', find_threshold(self.MODEL_NAME, 'cosine')))
+        DeepFace.build_model(self.MODEL_NAME)
+
+    def embed(self, image):
+        reps = self.DeepFace.represent(
+            img_path=image, model_name=self.MODEL_NAME, detector_backend=self.DETECTOR,
+            enforce_detection=True, max_faces=1,
+        )
+        return np.array(reps[0]['embedding'])
+
+    def compare(self, a, b):
+        distance = float(self.find_distance(a, b, 'cosine'))
+        return distance <= self.threshold, distance
+
+
+_engine = _DeepFaceEngine() if ENGINE == 'deepface' else _OpenCVEngine()
+
+
+# ── Public API ─────────────────────────────────────────────────
 
 def _embed(image):
-    """Face embedding for the most prominent face. Raises ValueError if no face is found."""
+    """Embedding of the most prominent face. Raises ValueError if no face is found."""
     with _lock:
-        reps = DeepFace.represent(
-            img_path=image,
-            model_name=MODEL_NAME,
-            detector_backend=DETECTOR,
-            enforce_detection=True,
-            max_faces=1,
-        )
-    return np.array(reps[0]['embedding'])
+        return _engine.embed(image)
 
 
 # Enrolled photos don't change, so their embeddings are computed once and reused.
@@ -84,9 +150,13 @@ def _enrolled_embedding(photo_path):
     return embedding
 
 
-def _is_match(live_embedding, enrolled_embedding):
-    distance = find_distance(live_embedding, enrolled_embedding, DISTANCE_METRIC)
-    return distance <= THRESHOLD, float(distance)
+def has_face(image):
+    """True if at least one face is detected in the image."""
+    try:
+        _embed(image)
+        return True
+    except ValueError:
+        return False
 
 
 def verify(live_image, enrolled_photo_path):
@@ -102,7 +172,7 @@ def verify(live_image, enrolled_photo_path):
         enrolled = _enrolled_embedding(enrolled_photo_path)
     except (ValueError, OSError):
         return False, 'no_match'
-    matched, _ = _is_match(live, enrolled)
+    matched, _ = _engine.compare(live, enrolled)
     return (True, 'match') if matched else (False, 'no_match')
 
 
@@ -121,12 +191,9 @@ def identify(live_image, candidates):
     best_key, best_distance = None, None
     for key, photo_path in candidates:
         try:
-            matched, distance = _is_match(live, _enrolled_embedding(photo_path))
+            matched, distance = _engine.compare(live, _enrolled_embedding(photo_path))
         except (ValueError, OSError):
             continue
         if matched and (best_distance is None or distance < best_distance):
             best_key, best_distance = key, distance
     return (best_key, 'match') if best_key is not None else (None, 'no_match')
-
-
-warm_up()

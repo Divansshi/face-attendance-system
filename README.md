@@ -63,14 +63,14 @@ flowchart LR
     C -- no --> D{On campus network<br/>or hybrid class?}
     D -- no --> X
     D -- yes --> E[Browser webcam frame<br/>sent as JPEG]
-    E --> F[Facenet embedding<br/>vs enrolled embedding]
+    E --> F[Face embedding<br/>vs enrolled embedding]
     F -- no match --> X
     F -- match --> G[(Save snapshot +<br/>attendance row)]
     G --> H([✅ Marked present])
 ```
 
 - **Camera capture happens in the browser.** The page uses the visitor's own webcam through `getUserMedia` and sends a single JPEG frame per scan, so the server never needs a camera of its own.
-- **Face verification** uses DeepFace with the Facenet model and cosine distance. The model loads once when the server starts, and each enrolled photo's embedding is computed once and cached. A scan only embeds the live frame and compares it.
+- **Face verification** uses OpenCV's YuNet detector and SFace recogniser by default, with DeepFace (Facenet) as an optional heavier engine (see below). Models load once when the server starts, and each enrolled photo's embedding is computed once and cached. A scan only embeds the live frame and compares it.
 - **Lecturer live sessions** embed the frame once and pick the closest enrolled student under the threshold, rather than re-checking every student from scratch.
 - **Enrollment checks for a face** before saving, and photos can be uploaded or taken with the webcam.
 - **Data** lives in SQLite across three tables: `students`, `classes` and `attendance`.
@@ -125,10 +125,10 @@ Early wireframes for the main screens:
 | Layer | Tools |
 |---|---|
 | **Backend** | Python, Flask, Gunicorn |
-| **Computer vision** | DeepFace (Facenet), OpenCV (headless), TensorFlow / Keras |
+| **Computer vision** | OpenCV YuNet + SFace (default); DeepFace (Facenet) on TensorFlow (optional) |
 | **Database** | SQLite |
 | **Frontend** | Jinja templates, HTML, CSS, vanilla JavaScript, WebRTC `getUserMedia` |
-| **Deployment** | Docker, GitHub Actions, Azure Container Apps, Gunicorn |
+| **Deployment** | PythonAnywhere (lightweight build); Docker + GitHub Actions + Azure Container Apps (full build) |
 
 ---
 
@@ -139,14 +139,47 @@ git clone https://github.com/Divansshi/face-attendance-system.git
 cd face-attendance-system
 python3.11 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
-pip install --no-deps -r requirements-nodeps.txt
+pip install -r requirements-lite.txt
 DEMO_MODE=1 python app.py
 ```
 
-Then open **http://localhost:5001**. The first start downloads the Facenet weights (about 90 MB).
+Then open **http://localhost:5001**.
+
+<details>
+<summary><b>Using the DeepFace engine instead</b></summary>
+
+<br/>
+
+```bash
+pip install -r requirements.txt
+pip install --no-deps -r requirements-nodeps.txt
+FACE_ENGINE=deepface DEMO_MODE=1 python app.py
+```
+
+The first start downloads the Facenet weights (about 90 MB).
+
+</details>
+
+## 🧠 Two face engines
+
+`face_engine.py` has two interchangeable back ends behind the same `verify` and `identify` functions, selected with `FACE_ENGINE`:
+
+| | `opencv` (default) | `deepface` |
+|---|---|---|
+| Detection | YuNet | OpenCV Haar cascade |
+| Recognition | SFace (cosine similarity ≥ 0.363) | Facenet (cosine distance ≤ 0.40) |
+| Dependencies | OpenCV, NumPy | DeepFace, TensorFlow |
+| Memory | about 225 MB | about 2 GB |
+| Model load | 0.1 s | about 10 s |
+| Time per check | about 0.3 s | about 3–4 s |
+
+On DeepFace's own sample photos, both engines made the same match / no-match decision on all 28 pairs. The lightweight engine is what makes free hosting possible.
 
 ## ☁️ Deployment
+
+**Live demo: PythonAnywhere.** The lightweight build runs on a free PythonAnywhere web app, which serves it over HTTPS (needed for webcam access) through a WSGI file that sets `DEMO_MODE` and `SECRET_KEY`.
+
+**Full build: Docker and Azure.** The Docker image uses the DeepFace engine:
 
 ```mermaid
 flowchart LR
@@ -161,7 +194,7 @@ Every push to `main` builds the image with GitHub Actions (`.github/workflows/co
 az containerapp up \
   --name attendai \
   --resource-group attendai-rg \
-  --location southeastasia \
+  --location eastasia \
   --image ghcr.io/divansshi/face-attendance-system:latest \
   --ingress external --target-port 8080 \
   --env-vars DEMO_MODE=1 SECRET_KEY=<random-string>
@@ -180,10 +213,10 @@ The app runs with 1 vCPU and 2 GiB of memory, scales to zero when nobody is usin
 | `SECRET_KEY` | Flask session signing key | `dev-only-change-me` |
 | `LECTURER_EMAIL` | Lecturer login email | `amirah@university.edu` |
 | `LECTURER_PASSWORD` | Lecturer login password | `password` |
-
+| `FACE_ENGINE` | `opencv` or `deepface` | `opencv` |
 | `CAMPUS_IP_PREFIX` | IP range counted as on campus | `192.168.` |
 | `TESTING_TIME` / `TESTING_LOCATION` | Bypass just one of the two checks | off |
-| `FACE_MODEL` / `FACE_THRESHOLD` | DeepFace model and match threshold | `Facenet` / DeepFace default |
+| `FACE_MODEL` / `FACE_THRESHOLD` | DeepFace engine only: model and match threshold | `Facenet` / DeepFace default |
 
 Enrolled photos and snapshots are written to `static/photos/` and `static/snapshots/`. Both are git-ignored, so biometric data never gets committed.
 
@@ -196,7 +229,8 @@ Enrolled photos and snapshots are written to `static/photos/` and `static/snapsh
 
 ```
 app.py              Flask routes for the lecturer and student portals
-face_engine.py      Model loading, embedding cache, verify and identify
+face_engine.py      OpenCV and DeepFace engines, embedding cache, verify and identify
+models/             YuNet and SFace ONNX models (OpenCV Zoo, Apache 2.0)
 security.py         Time-window, duplicate and location rules
 database.py         SQLite schema and seed classes
 static/camera.js    Browser webcam capture
@@ -215,6 +249,7 @@ docs/               Planning notes and UI wireframes
 - [ ] Liveness detection, so a printed photo can't pass
 - [ ] Threshold tuning for lookalikes
 - [x] Browser-side camera capture
+- [x] Lightweight OpenCV engine for free hosting
 - [ ] Persistent storage (a managed database and blob storage) instead of SQLite on a temporary disk
 - [ ] Class picker in the lecturer live session (currently fixed to CS301)
 - [ ] Real lecturer accounts with hashed passwords

@@ -2,6 +2,10 @@ from functools import wraps
 from datetime import datetime
 import os
 
+# Photos and the database are stored with paths relative to the project folder (they double as
+# /static URLs). Some hosts, like PythonAnywhere, start the app from a different directory.
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 import cv2
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from werkzeug.middleware.proxy_fix import ProxyFix

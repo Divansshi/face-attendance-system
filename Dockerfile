@@ -5,7 +5,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     TF_CPP_MIN_LOG_LEVEL=2 \
     DEEPFACE_HOME=/app/model \
-    TZ=Asia/Kuala_Lumpur
+    TZ=Asia/Kuala_Lumpur \
+    FACE_ENGINE=deepface
 
 # libglib is the one system library headless OpenCV needs; tzdata so class times use Malaysia time
 RUN apt-get update \
