@@ -20,6 +20,19 @@
 
 ---
 
+## 🎬 Demo
+
+<p align="center">
+  <img src="docs/demo/attendai-demo.gif" alt="AttendAI demo: enrolling by webcam, a wrong face being rejected, a successful scan, the once-a-day rule, the live session, the audit log and the class time window" width="880" />
+</p>
+
+<p align="center">
+  <sub>Enroll by webcam · photos with no face are rejected · wrong face not recognised · successful match · once per day · live session · audit log · time window.
+  <a href="docs/demo/attendai-demo.mp4">Full-quality video (MP4, 2 min)</a></sub>
+</p>
+
+---
+
 ## ✨ What it does
 
 <table>
