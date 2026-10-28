@@ -32,8 +32,8 @@
     <p class="subtitle">Position your face inside the frame and click Scan</p>
 
     <div class="camera-box" id="cameraBox">
-      <img id="cameraFeed"
-           style="width:100%; height:100%; object-fit:cover; border-radius:12px; display:none;" />
+      <video id="cameraFeed" autoplay playsinline muted
+             style="width:100%; height:100%; object-fit:cover; border-radius:12px; display:none; transform:scaleX(-1);"></video>
       <div class="camera-placeholder" id="cameraPlaceholder">Click Start camera to begin</div>
       <div class="bracket bracket-tl"></div>
       <div class="bracket bracket-tr"></div>
@@ -45,7 +45,7 @@
     <button onclick="startCamera()" class="btn btn-primary" style="width:100%;">
       Start camera
     </button>
-    <button onclick="scanFace()" class="btn btn-outline" style="width:100%; margin-top:0.75rem;">
+    <button onclick="scanFace()" id="scanBtn" class="btn btn-outline" style="width:100%; margin-top:0.75rem;">
       Scan my face
     </button>
 
@@ -72,8 +72,16 @@
     </div>
   </div>
 
+  <script src="{{ url_for('static', filename='camera.js') }}"></script>
   <script>
-    let feedInterval = null;
+    function showResult(html) {
+      const resultDiv = document.getElementById('scanResult');
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = `
+        <div style="background:var(--red-soft); color:var(--red-text);
+             padding:12px 16px; border-radius:var(--radius-sm); font-size:14px;
+             text-align:center;">${html}</div>`;
+    }
 
     function toggleDropdown() {
       document.getElementById('profileDropdown').classList.toggle('open');
@@ -84,55 +92,65 @@
       }
     });
 
+    const video = () => document.getElementById('cameraFeed');
+
     async function startCamera() {
       document.getElementById('scanStatus').textContent = 'Starting…';
-      document.getElementById('cameraPlaceholder').textContent = 'Warming up…';
-      await fetch('/camera/start');
-      await new Promise(resolve => setTimeout(resolve, 2500));
-      document.getElementById('cameraPlaceholder').style.display = 'none';
-      document.getElementById('cameraFeed').style.display = 'block';
-      feedInterval = setInterval(updateFeed, 200);
-      document.getElementById('scanStatus').textContent = 'Camera active';
-    }
-
-    async function updateFeed() {
+      document.getElementById('cameraPlaceholder').textContent = 'Waiting for camera permission…';
       try {
-        const res = await fetch('/camera/feed');
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.frame) {
-          document.getElementById('cameraFeed').src = 'data:image/jpeg;base64,' + data.frame;
-        }
-      } catch(e) {}
+        await AttendCamera.start(video());
+      } catch (err) {
+        document.getElementById('scanStatus').textContent = 'Camera off';
+        document.getElementById('cameraPlaceholder').textContent = AttendCamera.describeError(err);
+        return;
+      }
+      document.getElementById('cameraPlaceholder').style.display = 'none';
+      video().style.display = 'block';
+      document.getElementById('scanStatus').textContent = 'Camera active';
+      document.getElementById('scanResult').style.display = 'none';
     }
 
     async function scanFace() {
       // Reset previous results
       document.getElementById('blockBanner').style.display = 'none';
       document.getElementById('scanResult').style.display = 'none';
-      document.getElementById('scanStatus').textContent = 'Checking…';
+      const frame = AttendCamera.isRunning() ? AttendCamera.capture(video()) : null;
+      if (!frame) {
+        document.getElementById('scanStatus').textContent = 'Camera off';
+        showResult('Click <b>Start camera</b> first');
+        return;
+      }
 
-      const res = await fetch('/student/scan/recognize', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'}
-      });
-      const data = await res.json();
+      document.getElementById('scanStatus').textContent = 'Checking…';
+      const btn = document.getElementById('scanBtn');
+      btn.disabled = true; btn.textContent = 'Checking…';
+
+      let data;
+      try {
+        const res = await fetch('/student/scan/recognize', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ image: frame })
+        });
+        data = await res.json();
+      } catch (e) {
+        data = { status: 'error', message: 'Could not reach the server — try again' };
+      } finally {
+        btn.disabled = false; btn.textContent = 'Scan my face';
+      }
 
       if (data.status === 'match') {
         document.getElementById('scanStatus').textContent = 'Matched!';
-        clearInterval(feedInterval);
+        AttendCamera.stop(video());
         window.location.href = '/student/success';
+
+      } else if (data.status === 'no_face') {
+        document.getElementById('scanStatus').textContent = 'No face';
+        showResult('No face detected — face the camera in good lighting and try again');
 
       } else if (data.status === 'no_match') {
         document.getElementById('scanStatus').textContent = 'Try again';
-        const resultDiv = document.getElementById('scanResult');
-        resultDiv.style.display = 'block';
-        resultDiv.innerHTML = `
-          <div style="background:var(--red-soft); color:var(--red-text);
-               padding:12px 16px; border-radius:var(--radius-sm); font-size:14px;
-               text-align:center;">
-            ✕ Face not recognised — adjust lighting and try again
-          </div>`;
+        showResult('✕ Face not recognised — adjust lighting and try again');
 
       } else {
         // Blocked — time window, already marked, or no photo

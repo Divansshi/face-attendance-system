@@ -1,9 +1,17 @@
+import os
 from datetime import datetime, timedelta
 from database import get_db
 
-TESTING_TIME = False
-TESTING_LOCATION = False
-CAMPUS_IP_PREFIX = '192.168.'
+
+def _flag(name):
+    return os.environ.get(name, '').lower() in ('1', 'true', 'yes')
+
+
+# DEMO_MODE relaxes the time-window and campus checks so anyone with the link can try the app.
+DEMO_MODE = _flag('DEMO_MODE')
+TESTING_TIME = DEMO_MODE or _flag('TESTING_TIME')
+TESTING_LOCATION = DEMO_MODE or _flag('TESTING_LOCATION')
+CAMPUS_IP_PREFIX = os.environ.get('CAMPUS_IP_PREFIX', '192.168.')
 
 def is_within_session_window(course_code, window_minutes=15):
     if TESTING_TIME:
@@ -65,6 +73,9 @@ def check_location(ip_address, course_code):
         return False, None, 'Course not found'
 
     is_hybrid = course['hybrid'] == 1
+
+    if TESTING_LOCATION:
+        return True, 'remote' if is_hybrid else 'on-site', 'Testing mode — location bypassed'
 
     if ip_address in ('127.0.0.1', '::1'):
         return True, 'on-site', 'Local network'

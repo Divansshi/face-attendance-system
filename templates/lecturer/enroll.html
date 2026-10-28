@@ -52,24 +52,90 @@
         <input type="text" id="name" name="name" placeholder="e.g. Ahmad Faris" required />
         <label for="sid">Student ID</label>
         <input type="text" id="sid" name="sid" placeholder="e.g. 2021234567" required />
-        <label for="course">Course code</label>
-        <input type="text" id="course" name="course" placeholder="e.g. CS301" required />
+        <label for="course">Course</label>
+        <select id="course" name="course" required>
+          {% for c in classes %}
+          <option value="{{ c['course_code'] }}">{{ c['course_code'] }} — {{ c['course_name'] }}</option>
+          {% endfor %}
+        </select>
       </div>
 
       <div class="section-card">
         <p class="section-label">Face photo</p>
-        <input type="file" name="photo" accept="image/*" style="font-size:14px;" />
-        <p style="font-size:12px; color:var(--gray-500); margin-top:8px;">
-          Clear front-facing photo · JPG or PNG
+
+        <div class="camera-box" id="enrollCamera" style="display:none; margin-bottom:0.75rem;">
+          <video id="enrollVideo" autoplay playsinline muted
+                 style="width:100%; height:100%; object-fit:cover; border-radius:12px; transform:scaleX(-1);"></video>
+          <img id="enrollPreview" alt="Captured photo"
+               style="display:none; width:100%; height:100%; object-fit:cover; border-radius:12px; transform:scaleX(-1);" />
+        </div>
+        <div style="display:flex; gap:10px; margin-bottom:0.75rem;">
+          <button type="button" class="btn btn-outline" style="flex:1;" id="webcamBtn" onclick="toggleWebcam()">Use webcam</button>
+          <button type="button" class="btn btn-outline" style="flex:1; display:none;" id="captureBtn" onclick="capturePhoto()">Take photo</button>
+        </div>
+        <input type="hidden" name="captured_photo" id="capturedPhoto" />
+
+        <input type="file" name="photo" id="photoFile" accept="image/*" style="font-size:14px;" />
+        <p style="font-size:12px; color:var(--gray-500); margin-top:8px;" id="photoHint">
+          Upload a clear front-facing photo (JPG or PNG), or take one with the webcam
         </p>
       </div>
 
-      <button type="submit" class="btn btn-primary">Enroll student</button>
+      <button type="submit" class="btn btn-primary" id="enrollBtn">Enroll student</button>
     </form>
 
   </div>
 
+  <script src="{{ url_for('static', filename='camera.js') }}"></script>
   <script>
+    const enrollVideo = document.getElementById('enrollVideo');
+
+    async function toggleWebcam() {
+      const box = document.getElementById('enrollCamera');
+      if (AttendCamera.isRunning()) {
+        AttendCamera.stop(enrollVideo);
+        box.style.display = 'none';
+        document.getElementById('captureBtn').style.display = 'none';
+        document.getElementById('webcamBtn').textContent = 'Use webcam';
+        return;
+      }
+      try {
+        await AttendCamera.start(enrollVideo);
+      } catch (err) {
+        document.getElementById('photoHint').textContent = AttendCamera.describeError(err);
+        return;
+      }
+      box.style.display = 'block';
+      enrollVideo.style.display = 'block';
+      document.getElementById('enrollPreview').style.display = 'none';
+      document.getElementById('captureBtn').style.display = 'block';
+      document.getElementById('webcamBtn').textContent = 'Close webcam';
+    }
+
+    function capturePhoto() {
+      const frame = AttendCamera.capture(enrollVideo);
+      if (!frame) return;
+      document.getElementById('capturedPhoto').value = frame;
+      const preview = document.getElementById('enrollPreview');
+      preview.src = frame;
+      preview.style.display = 'block';
+      enrollVideo.style.display = 'none';
+      AttendCamera.stop(enrollVideo);
+      document.getElementById('captureBtn').style.display = 'none';
+      document.getElementById('webcamBtn').textContent = 'Retake';
+      document.getElementById('photoFile').value = '';
+      document.getElementById('photoHint').textContent = 'Photo captured ✓';
+    }
+
+    document.getElementById('photoFile').addEventListener('change', () => {
+      document.getElementById('capturedPhoto').value = '';
+    });
+
+    document.querySelector('form').addEventListener('submit', () => {
+      const btn = document.getElementById('enrollBtn');
+      btn.disabled = true; btn.textContent = 'Checking photo…';
+    });
+
     function toggleDropdown() {
       document.getElementById('profileDropdown').classList.toggle('open');
     }

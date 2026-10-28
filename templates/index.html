@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AttendAI — Face-recognition attendance</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+
+  <div class="card">
+    <div class="auth-logo">AttendAI</div>
+    <h1>Attendance by face</h1>
+    <p class="subtitle">Students look at a camera instead of signing a sheet. Lecturers get an audit trail of every scan.</p>
+
+    {% if demo_mode %}
+    <div class="demo-note">
+      <b>Try it in three steps</b><br/>
+      1. Open the lecturer portal and enroll yourself with a webcam photo.<br/>
+      2. Open the student portal and sign in with that student ID.<br/>
+      3. Start the camera and scan your face.<br/><br/>
+      This is a demo: the class-time and campus-network checks are relaxed, and photos are stored
+      only temporarily. They are wiped whenever the server restarts.
+    </div>
+    {% endif %}
+
+    <a href="{{ url_for('lecturer_login') }}" class="btn btn-primary">Lecturer portal</a>
+    <a href="{{ url_for('student_login') }}" class="btn btn-outline" style="margin-top:0.75rem;">Student portal</a>
+
+    <p style="font-size:12px; color:var(--gray-500); margin-top:1.25rem; text-align:center;">
+      <a href="https://github.com/Divansshi/face-attendance-system">Source on GitHub</a>
+    </p>
+  </div>
+
+</body>
+</html>

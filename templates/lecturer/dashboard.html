@@ -32,9 +32,15 @@
   <div class="dashboard-wrapper page-top">
 
     <div class="dash-header">
-      <h2>Good morning, Dr. Amirah</h2>
+      <h2>{{ greeting }}, Dr. Amirah</h2>
       <p class="subtitle">{{ today }}</p>
     </div>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="demo-note">✓ {{ messages[-1] }}</div>
+      {% endif %}
+    {% endwith %}
 
     <div class="stats-grid">
       <div class="stat-card">

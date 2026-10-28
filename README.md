@@ -56,21 +56,23 @@
 
 ```mermaid
 flowchart LR
-    A([Student clicks<br/>Mark attendance]) --> B{Within class<br/>time window?}
+    A([Student clicks<br/>Scan my face]) --> B{Within class<br/>time window?}
     B -- no --> X([❌ Rejected])
     B -- yes --> C{Already marked<br/>today?}
     C -- yes --> X
     C -- no --> D{On campus network<br/>or hybrid class?}
     D -- no --> X
-    D -- yes --> E[Grab live frame<br/>from OpenCV thread]
-    E --> F[DeepFace.verify<br/>live frame vs enrolled photo]
+    D -- yes --> E[Browser webcam frame<br/>sent as JPEG]
+    E --> F[Facenet embedding<br/>vs enrolled embedding]
     F -- no match --> X
     F -- match --> G[(Save snapshot +<br/>attendance row)]
     G --> H([✅ Marked present])
 ```
 
-- **Face verification** uses DeepFace. It runs in a separate subprocess (`recognize.py`) so the TensorFlow model stays isolated from the Flask request thread.
-- **Camera capture** runs on a background thread with a lock around the latest frame, so the live feed and recognition requests don't block each other.
+- **Camera capture happens in the browser.** The page uses the visitor's own webcam through `getUserMedia` and sends a single JPEG frame per scan, so the server never needs a camera of its own.
+- **Face verification** uses DeepFace with the Facenet model and cosine distance. The model loads once when the server starts, and each enrolled photo's embedding is computed once and cached. A scan only embeds the live frame and compares it.
+- **Lecturer live sessions** embed the frame once and pick the closest enrolled student under the threshold, rather than re-checking every student from scratch.
+- **Enrollment checks for a face** before saving, and photos can be uploaded or taken with the webcam.
 - **Data** lives in SQLite across three tables: `students`, `classes` and `attendance`.
 
 ```mermaid
@@ -123,10 +125,10 @@ Early wireframes for the main screens:
 | Layer | Tools |
 |---|---|
 | **Backend** | Python, Flask, Gunicorn |
-| **Computer vision** | DeepFace, OpenCV (headless), TensorFlow / Keras, MTCNN, RetinaFace |
+| **Computer vision** | DeepFace (Facenet), OpenCV (headless), TensorFlow / Keras |
 | **Database** | SQLite |
-| **Frontend** | Jinja templates, HTML, CSS, vanilla JavaScript |
-| **Deployment** | Nixpacks config for the X11 libraries OpenCV needs |
+| **Frontend** | Jinja templates, HTML, CSS, vanilla JavaScript, WebRTC `getUserMedia` |
+| **Deployment** | Docker, Google Cloud Run, Gunicorn |
 
 ---
 
@@ -135,13 +137,30 @@ Early wireframes for the main screens:
 ```bash
 git clone https://github.com/Divansshi/face-attendance-system.git
 cd face-attendance-system
-python3.10 -m venv venv
+python3.11 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-python app.py
+pip install --no-deps -r requirements-nodeps.txt
+DEMO_MODE=1 python app.py
 ```
 
-Then open **http://localhost:5001**.
+Then open **http://localhost:5001**. The first start downloads the Facenet weights (about 90 MB).
+
+## ☁️ Deploying to Google Cloud Run
+
+The repo includes a `Dockerfile`, so Cloud Run can build and deploy it straight from source:
+
+```bash
+gcloud run deploy attendai \
+  --source . \
+  --region asia-southeast1 \
+  --allow-unauthenticated \
+  --memory 2Gi --cpu 1 \
+  --max-instances 1 \
+  --set-env-vars DEMO_MODE=1,SECRET_KEY=<random-string>
+```
+
+`--max-instances 1` keeps every visitor on the same instance, so they share one SQLite database. Cloud Run's filesystem is temporary, so enrolled students reset whenever the instance restarts, which suits a public demo.
 
 <details>
 <summary><b>⚙️ Configuration</b></summary>
@@ -150,11 +169,14 @@ Then open **http://localhost:5001**.
 
 | Variable | Purpose | Default |
 |---|---|---|
+| `DEMO_MODE` | Relaxes the time-window and campus checks and shows demo hints | off |
 | `SECRET_KEY` | Flask session signing key | `dev-only-change-me` |
 | `LECTURER_EMAIL` | Lecturer login email | `amirah@university.edu` |
 | `LECTURER_PASSWORD` | Lecturer login password | `password` |
 
-In `security.py`, set `CAMPUS_IP_PREFIX` to your network's IP range. For development, set `TESTING_TIME` and `TESTING_LOCATION` to `True` to bypass the time and location checks.
+| `CAMPUS_IP_PREFIX` | IP range counted as on campus | `192.168.` |
+| `TESTING_TIME` / `TESTING_LOCATION` | Bypass just one of the two checks | off |
+| `FACE_MODEL` / `FACE_THRESHOLD` | DeepFace model and match threshold | `Facenet` / DeepFace default |
 
 Enrolled photos and snapshots are written to `static/photos/` and `static/snapshots/`. Both are git-ignored, so biometric data never gets committed.
 
@@ -166,13 +188,14 @@ Enrolled photos and snapshots are written to `static/photos/` and `static/snapsh
 <br/>
 
 ```
-app.py          Flask routes for the lecturer, student and camera endpoints
-camera.py       Threaded OpenCV capture
-recognize.py    DeepFace verification, run as a subprocess
-security.py     Time-window, duplicate and location rules
-database.py     SQLite schema and seed classes
-templates/      Lecturer and student pages
-docs/           Planning notes and UI wireframes
+app.py              Flask routes for the lecturer and student portals
+face_engine.py      Model loading, embedding cache, verify and identify
+security.py         Time-window, duplicate and location rules
+database.py         SQLite schema and seed classes
+static/camera.js    Browser webcam capture
+templates/          Lecturer and student pages
+Dockerfile          Container image for Cloud Run
+docs/               Planning notes and UI wireframes
 ```
 
 </details>
@@ -183,8 +206,9 @@ docs/           Planning notes and UI wireframes
 
 - [ ] Liveness detection, so a printed photo can't pass
 - [ ] Threshold tuning for lookalikes
-- [ ] Browser-side camera capture (right now the webcam must be on the machine running the app)
-- [ ] Multi-class support in the student scan flow
+- [x] Browser-side camera capture
+- [ ] Persistent storage (Cloud SQL and Cloud Storage) instead of SQLite on a temporary disk
+- [ ] Class picker in the lecturer live session (currently fixed to CS301)
 - [ ] Real lecturer accounts with hashed passwords
 - [ ] CSV export of attendance records
 

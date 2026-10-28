@@ -29,7 +29,7 @@
 
   <div class="record-wrapper page-top">
     <h2>My attendance</h2>
-    <p class="subtitle">CS301 — Algorithms · Semester 2</p>
+    <p class="subtitle">{% if course %}{{ course.course_code }} — {{ course.course_name }}{% endif %}</p>
 
     <div class="ring-card">
       <svg width="140" height="140" viewBox="0 0 140 140">
