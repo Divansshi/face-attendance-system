@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10-3776AB?style=for-the-badge&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img src="https://img.shields.io/badge/Flask-3.1-000000?style=for-the-badge&logo=flask&logoColor=white" />
   <img src="https://img.shields.io/badge/OpenCV-4.13-5C3EE8?style=for-the-badge&logo=opencv&logoColor=white" />
   <img src="https://img.shields.io/badge/TensorFlow-2.21-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white" />
@@ -28,7 +28,7 @@
       <h3>👩‍🏫 Lecturer portal</h3>
       <ul>
         <li>Enroll students with a reference photo</li>
-        <li>Manage classes, schedules and hybrid mode</li>
+        <li>See each class and switch hybrid mode on or off</li>
         <li>Run live recognition sessions</li>
         <li>Audit log of every scan, with the captured snapshot</li>
       </ul>
