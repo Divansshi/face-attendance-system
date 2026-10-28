@@ -28,7 +28,7 @@
 
 <p align="center">
   <sub>Enroll by webcam · photos with no face are rejected · wrong face not recognised · successful match · once per day · live session · audit log · time window.
-  <a href="docs/demo/attendai-demo.mp4">Full-quality video with music (MP4, 2 min)</a></sub>
+  <a href="docs/demo/attendai-demo.mp4">▶ Watch the full walkthrough (2 min, with audio)</a></sub>
 </p>
 
 ---
