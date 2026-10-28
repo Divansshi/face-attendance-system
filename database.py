@@ -25,6 +25,11 @@ def init_db():
         )
     ''')
 
+    # Older databases predate enrolled_at; add it so demo data can expire
+    columns = [row[1] for row in cursor.execute('PRAGMA table_info(students)')]
+    if 'enrolled_at' not in columns:
+        cursor.execute('ALTER TABLE students ADD COLUMN enrolled_at TEXT')
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS classes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,3 +69,29 @@ def init_db():
 
 if __name__ == '__main__':
     init_db()
+
+
+def purge_expired_students(max_age_hours):
+    """Delete students enrolled more than max_age_hours ago, with their attendance and photos.
+
+    Used in demo mode so visitors' face photos don't accumulate on the server.
+    Returns the number of students removed.
+    """
+    conn = get_db()
+    expired = conn.execute(
+        "SELECT student_id, photo_path FROM students "
+        "WHERE enrolled_at IS NULL OR enrolled_at < datetime('now', ?)",
+        (f'-{int(max_age_hours)} hours',)
+    ).fetchall()
+    for student in expired:
+        snapshots = conn.execute(
+            'SELECT snapshot_path FROM attendance WHERE student_id = ?', (student['student_id'],)
+        ).fetchall()
+        for path in [student['photo_path']] + [row['snapshot_path'] for row in snapshots]:
+            if path and os.path.exists(path):
+                os.remove(path)
+        conn.execute('DELETE FROM attendance WHERE student_id = ?', (student['student_id'],))
+        conn.execute('DELETE FROM students WHERE student_id = ?', (student['student_id'],))
+    conn.commit()
+    conn.close()
+    return len(expired)

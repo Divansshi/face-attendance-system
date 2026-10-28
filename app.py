@@ -1,6 +1,7 @@
 from functools import wraps
 from datetime import datetime
 import os
+import time
 
 # Photos and the database are stored with paths relative to the project folder (they double as
 # /static URLs). Some hosts, like PythonAnywhere, start the app from a different directory.
@@ -10,7 +11,7 @@ import cv2
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from database import get_db, init_db
+from database import get_db, init_db, purge_expired_students
 from security import is_within_session_window, has_marked_today, check_location, DEMO_MODE
 import face_engine
 
@@ -33,6 +34,22 @@ os.makedirs(SNAPSHOT_FOLDER, exist_ok=True)
 with app.app_context():
     init_db()
 
+# In demo mode, visitors' enrolled faces are deleted after this many hours.
+DEMO_RETENTION_HOURS = int(os.environ.get('DEMO_RETENTION_HOURS', 24))
+_last_purge = 0.0
+
+
+@app.before_request
+def purge_demo_data():
+    """In demo mode, remove expired students at most once every 10 minutes."""
+    global _last_purge
+    if not DEMO_MODE or time.time() - _last_purge < 600:
+        return
+    _last_purge = time.time()
+    removed = purge_expired_students(DEMO_RETENTION_HOURS)
+    if removed:
+        app.logger.info('Demo mode: removed %d expired student(s)', removed)
+
 
 @app.context_processor
 def inject_demo_flag():
@@ -40,6 +57,7 @@ def inject_demo_flag():
         'demo_mode': DEMO_MODE,
         'demo_email': LECTURER_EMAIL if DEMO_MODE else None,
         'demo_password': LECTURER_PASSWORD if DEMO_MODE else None,
+        'demo_retention_hours': DEMO_RETENTION_HOURS,
     }
 
 
@@ -153,7 +171,7 @@ def lecturer_enroll():
         conn = get_db()
         try:
             conn.execute(
-                'INSERT INTO students (full_name, student_id, course, photo_path) VALUES (?, ?, ?, ?)',
+                "INSERT INTO students (full_name, student_id, course, photo_path, enrolled_at) VALUES (?, ?, ?, ?, datetime('now'))",
                 (full_name, student_id, course, photo_path)
             )
             conn.commit()

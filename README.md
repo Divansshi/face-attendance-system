@@ -14,6 +14,10 @@
   No roll calls, no sign-in sheets. Students look at a camera and AttendAI does the rest.
 </p>
 
+<p align="center">
+  <a href="https://divansshi.pythonanywhere.com"><img src="https://img.shields.io/badge/▶_Live_demo-divansshi.pythonanywhere.com-F8A5C2?style=for-the-badge" /></a>
+</p>
+
 ---
 
 ## ✨ What it does
@@ -177,7 +181,7 @@ On DeepFace's own sample photos, both engines made the same match / no-match dec
 
 ## ☁️ Deployment
 
-**Live demo: PythonAnywhere.** The lightweight build runs on a free PythonAnywhere web app, which serves it over HTTPS (needed for webcam access) through a WSGI file that sets `DEMO_MODE` and `SECRET_KEY`.
+**Live demo: [divansshi.pythonanywhere.com](https://divansshi.pythonanywhere.com).** The lightweight build runs on a free PythonAnywhere web app, which serves it over HTTPS (needed for webcam access) through a WSGI file that sets `DEMO_MODE` and `SECRET_KEY`. In demo mode, enrolled students and their photos are deleted automatically after 24 hours (`DEMO_RETENTION_HOURS`).
 
 **Full build: Docker and Azure.** The Docker image uses the DeepFace engine:
 
@@ -209,7 +213,8 @@ The app runs with 1 vCPU and 2 GiB of memory, scales to zero when nobody is usin
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `DEMO_MODE` | Relaxes the time-window and campus checks and shows demo hints | off |
+| `DEMO_MODE` | Relaxes the time-window and campus checks, shows demo hints, and auto-deletes enrolled students | off |
+| `DEMO_RETENTION_HOURS` | How long demo enrollments and photos are kept | `24` |
 | `SECRET_KEY` | Flask session signing key | `dev-only-change-me` |
 | `LECTURER_EMAIL` | Lecturer login email | `amirah@university.edu` |
 | `LECTURER_PASSWORD` | Lecturer login password | `password` |
