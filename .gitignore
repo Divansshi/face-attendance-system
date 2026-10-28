@@ -221,3 +221,12 @@ __marimo__/
 .DS_Store
 docs/.DS_Store
 attendance.db
+
+# AttendAI — never commit environments or biometric data
+venv*/
+static/photos/*
+static/snapshots/*
+!static/photos/.gitkeep
+!static/snapshots/.gitkeep
+static/temp_frame.jpg
+**/.DS_Store

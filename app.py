@@ -11,7 +11,10 @@ import os
 import time
 
 app = Flask(__name__)
-app.secret_key = 'attendai-dev-secret-2026'
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-only-change-me')
+
+LECTURER_EMAIL = os.environ.get('LECTURER_EMAIL', 'amirah@university.edu')
+LECTURER_PASSWORD = os.environ.get('LECTURER_PASSWORD', 'password')
 
 UPLOAD_FOLDER = 'static/photos'
 SNAPSHOT_FOLDER = 'static/snapshots'
@@ -40,7 +43,7 @@ def verify_faces(img1_path, img2_path):
 @app.route('/lecturer/login', methods=['GET', 'POST'])
 def lecturer_login():
     if request.method == 'POST':
-        if request.form['email'] == 'amirah@university.edu' and request.form['password'] == 'password':
+        if request.form['email'] == LECTURER_EMAIL and request.form['password'] == LECTURER_PASSWORD:
             session['lecturer'] = 'Dr. Amirah'
             return redirect(url_for('lecturer_dashboard'))
         return render_template('lecturer/login.html', error='Invalid email or password')
