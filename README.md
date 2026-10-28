@@ -128,7 +128,7 @@ Early wireframes for the main screens:
 | **Computer vision** | DeepFace (Facenet), OpenCV (headless), TensorFlow / Keras |
 | **Database** | SQLite |
 | **Frontend** | Jinja templates, HTML, CSS, vanilla JavaScript, WebRTC `getUserMedia` |
-| **Deployment** | Docker, Google Cloud Run, Gunicorn |
+| **Deployment** | Docker, GitHub Actions, Azure Container Apps, Gunicorn |
 
 ---
 
@@ -146,21 +146,28 @@ DEMO_MODE=1 python app.py
 
 Then open **http://localhost:5001**. The first start downloads the Facenet weights (about 90 MB).
 
-## ☁️ Deploying to Google Cloud Run
+## ☁️ Deployment
 
-The repo includes a `Dockerfile`, so Cloud Run can build and deploy it straight from source:
-
-```bash
-gcloud run deploy attendai \
-  --source . \
-  --region asia-southeast1 \
-  --allow-unauthenticated \
-  --memory 2Gi --cpu 1 \
-  --max-instances 1 \
-  --set-env-vars DEMO_MODE=1,SECRET_KEY=<random-string>
+```mermaid
+flowchart LR
+    A[Push to GitHub] --> B[GitHub Actions<br/>builds Docker image]
+    B --> C[(GitHub Container<br/>Registry)]
+    C --> D[Azure Container Apps<br/>scales to zero when idle]
 ```
 
-`--max-instances 1` keeps every visitor on the same instance, so they share one SQLite database. Cloud Run's filesystem is temporary, so enrolled students reset whenever the instance restarts, which suits a public demo.
+Every push to `main` builds the image with GitHub Actions (`.github/workflows/container.yml`) and publishes it to `ghcr.io/divansshi/face-attendance-system`. Azure Container Apps runs that image:
+
+```bash
+az containerapp up \
+  --name attendai \
+  --resource-group attendai-rg \
+  --location southeastasia \
+  --image ghcr.io/divansshi/face-attendance-system:latest \
+  --ingress external --target-port 8080 \
+  --env-vars DEMO_MODE=1 SECRET_KEY=<random-string>
+```
+
+The app runs with 1 vCPU and 2 GiB of memory, scales to zero when nobody is using it, and is capped at one replica so every visitor shares the same SQLite database. The container's disk is temporary, so enrolled students reset whenever the app restarts, which suits a public demo.
 
 <details>
 <summary><b>⚙️ Configuration</b></summary>
@@ -194,7 +201,8 @@ security.py         Time-window, duplicate and location rules
 database.py         SQLite schema and seed classes
 static/camera.js    Browser webcam capture
 templates/          Lecturer and student pages
-Dockerfile          Container image for Cloud Run
+Dockerfile          Container image
+.github/workflows/  Image build on every push
 docs/               Planning notes and UI wireframes
 ```
 
@@ -207,7 +215,7 @@ docs/               Planning notes and UI wireframes
 - [ ] Liveness detection, so a printed photo can't pass
 - [ ] Threshold tuning for lookalikes
 - [x] Browser-side camera capture
-- [ ] Persistent storage (Cloud SQL and Cloud Storage) instead of SQLite on a temporary disk
+- [ ] Persistent storage (a managed database and blob storage) instead of SQLite on a temporary disk
 - [ ] Class picker in the lecturer live session (currently fixed to CS301)
 - [ ] Real lecturer accounts with hashed passwords
 - [ ] CSV export of attendance records
